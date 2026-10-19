@@ -354,9 +354,9 @@ const GALLERY = [
   "page": "https://commons.wikimedia.org/wiki/File:Cumbre_dorsal_-_Teide.jpg"
  },
  {
-  "src": "img/wm/.jpg",
+  "src": "img/wm/rainbow-over-volcanic-cones.jpg",
   "group": "화산",
-  "name": "Радуга над вулканическими конусами",
+  "name": "Rainbow over volcanic cones",
   "artist": "Ted.ns",
   "license": "CC BY-SA 4.0",
   "page": "https://commons.wikimedia.org/wiki/File:%D0%A0%D0%B0%D0%B4%D1%83%D0%B3%D0%B0_%D0%BD%D0%B0%D0%B4_%D0%B2%D1%83%D0%BB%D0%BA%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%BC%D0%B8_%D0%BA%D0%BE%D0%BD%D1%83%D1%81%D0%B0%D0%BC%D0%B8.jpg"
@@ -650,9 +650,9 @@ const GALLERY = [
   "page": "https://commons.wikimedia.org/wiki/File:2013_Cogden_Bridge.jpg"
  },
  {
-  "src": "img/wm/01.jpg",
+  "src": "img/wm/khuha-kharuehat-cave-pavilion.jpg",
   "group": "지형",
-  "name": "01-พระที่นั่งคูหาคฤหาสน์",
+  "name": "Khuha Kharuehat pavilion cave",
   "artist": "BerryJ",
   "license": "CC BY-SA 4.0",
   "page": "https://commons.wikimedia.org/wiki/File:01-%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%97%E0%B8%B5%E0%B9%88%E0%B8%99%E0%B8%B1%E0%B9%88%E0%B8%87%E0%B8%84%E0%B8%B9%E0%B8%AB%E0%B8%B2%E0%B8%84%E0%B8%A4%E0%B8%AB%E0%B8%B2%E0%B8%AA%E0%B8%99%E0%B9%8C.jpg"

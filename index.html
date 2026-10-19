@@ -147,8 +147,8 @@
 
 <footer>made by @earth._.uz · <a class="credit" href="credits.html">사진 출처</a> <a class="admin" href="admin.html" aria-label="관리자 모드" title="관리자 모드">⚙️</a></footer>
 
-<script src="gallery.js"></script>
-<script src="common.js"></script>
+<script src="gallery.js?v=20261019"></script>
+<script src="common.js?v=20261019"></script>
 <script>
 let apps = [], subjects = [];
 const OTHER = { id: "_other", name: "기타", image: "img/moon.jpg" };
@@ -224,7 +224,7 @@ addEventListener("hashchange", () => { $("q").value = ""; render(); scrollTo(0, 
 fetch("links.json", { cache: "no-cache" })
   .then(r => r.json())
   .then(data => { ({ subjects, apps } = normalize(data)); render(); })
-  .catch(() => { empty.textContent = "목록을 불러오지 못했어요. 새로고침해 주세요."; empty.hidden = false; });
+  .catch(e => { console.error(e); empty.textContent = "목록을 불러오지 못했어요. 새로고침(Ctrl+F5)해 주세요."; empty.hidden = false; });
 </script>
 </body>
 </html>

@@ -18,6 +18,13 @@
       "url": "https://uzzint.github.io/data-rescue/",
       "thumb": "",
       "subject": "sci"
+    },
+    {
+      "title": "빅데이터-데이터 여행사",
+      "desc": "빅데이터를 이용해 여행 의뢰를 해결하자!",
+      "url": "https://uzzint.github.io/data-trip/",
+      "thumb": "",
+      "subject": "sci"
     }
   ]
 }

@@ -3,11 +3,16 @@
     {
       "id": "sci",
       "name": "통합과학",
-      "image": "img/carina-nebula.jpg"
+      "image": "img/typhoon.jpg"
     },
     {
       "id": "mvetkcwz",
       "name": "지구시스템과학",
+      "image": "img/aurora.jpg"
+    },
+    {
+      "id": "mveymhc6",
+      "name": "행성우주과학",
       "image": "img/earthrise.jpg"
     }
   ],

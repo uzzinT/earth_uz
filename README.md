@@ -1,7 +1,5 @@
 # earth_uz 🌏
 
-수업자료 웹앱 링크 모음
+수업자료 웹앱 모음 → **https://uzzint.github.io/earth_uz/**
 
-| 앱 이름 | 설명 | 링크 |
-|---|---|---|
-| 예시 앱 | 여기에 설명을 적어요 | [바로가기](https://example.com) |
+링크를 추가하려면 `index.html`의 `const apps = [ ... ]` 목록에 한 줄을 추가하세요.

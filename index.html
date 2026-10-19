@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>earth_uz · 수업자료 모음</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌏</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef6f1;
+    --card: #ffffff;
+    --ink: #1f3b2f;
+    --muted: #5c7468;
+    --accent: #2f9e6e;
+    --sky: #4a90d9;
+    --line: #d5e6dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1d18;
+      --card: #172a23;
+      --ink: #e4f2ea;
+      --muted: #9db8aa;
+      --accent: #5fd39d;
+      --sky: #7db7f0;
+      --line: #27443a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Gowun Dodum", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  header {
+    text-align: center;
+    padding: 56px 16px 32px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sky) 18%, transparent), transparent);
+  }
+  .globe { font-size: 64px; display: inline-block; animation: spin 12s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .globe { animation: none; } }
+  h1 { font-family: "Jua", sans-serif; font-size: clamp(32px, 6vw, 48px); margin: 8px 0 4px; }
+  header p { margin: 0; color: var(--muted); }
+  main { max-width: 960px; margin: 0 auto; padding: 0 16px 64px; }
+  input[type=search] {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    margin-bottom: 24px;
+  }
+  input[type=search]:focus { outline: none; border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  a.card {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 20px;
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: 20px;
+    color: inherit;
+    text-decoration: none;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  a.card:hover, a.card:focus-visible {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 20%, transparent);
+    outline: none;
+  }
+  .emoji { font-size: 36px; }
+  .name { font-family: "Jua", sans-serif; font-size: 20px; }
+  .desc { color: var(--muted); font-size: 15px; flex: 1; }
+  .tag {
+    align-self: flex-start;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+  }
+  .empty { text-align: center; color: var(--muted); padding: 32px; }
+  footer { text-align: center; color: var(--muted); font-size: 14px; padding-bottom: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="globe" aria-hidden="true">🌏</div>
+  <h1>earth_uz</h1>
+  <p>수업자료 웹앱 모음</p>
+</header>
+
+<main>
+  <input type="search" id="q" placeholder="🔍 앱 이름이나 과목으로 찾기" aria-label="앱 검색">
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>찾는 앱이 없어요 🥲</p>
+</main>
+
+<footer>made by earth_uz 🌱</footer>
+
+<script>
+// ✏️ 링크 추가하기: 아래 { ... } 한 줄을 복사해서 내용만 바꾸면 돼요.
+const apps = [
+  { emoji: "🧪", name: "예시 앱", desc: "여기에 설명을 적어요", tag: "과학", url: "https://example.com" },
+];
+
+const grid = document.getElementById("grid");
+const empty = document.getElementById("empty");
+
+function render(query) {
+  const q = query.trim().toLowerCase();
+  const shown = apps.filter(a => [a.name, a.desc, a.tag].join(" ").toLowerCase().includes(q));
+  grid.replaceChildren(...shown.map(a => {
+    const card = document.createElement("a");
+    card.className = "card";
+    card.href = a.url;
+    card.target = "_blank";
+    card.rel = "noopener";
+    for (const [cls, text] of [["emoji", a.emoji], ["name", a.name], ["desc", a.desc], ["tag", a.tag]]) {
+      if (!text) continue;
+      const el = document.createElement("span");
+      el.className = cls;
+      el.textContent = text;
+      card.append(el);
+    }
+    return card;
+  }));
+  empty.hidden = shown.length > 0;
+}
+
+document.getElementById("q").addEventListener("input", e => render(e.target.value));
+render("");
+</script>
+</body>
+</html>

@@ -67,7 +67,7 @@
 
   <section class="panel" id="login" hidden>
     <label for="pw">관리자 비밀번호</label>
-    <input type="password" id="pw" autocomplete="current-password">
+    <input type="text" id="pw" autocomplete="off" spellcheck="false">
     <div class="row" style="margin-top:12px"><button class="primary" id="loginBtn">들어가기</button></div>
     <p class="hint"><a href="#" id="resetLink">토큰이 만료됐거나 비밀번호를 바꾸고 싶어요</a></p>
   </section>
@@ -75,11 +75,9 @@
   <section class="panel" id="setup" hidden>
     <p style="margin-top:0"><b>처음 설정</b> · GitHub 토큰을 한 번만 넣고 관리자 비밀번호를 정해요.</p>
     <label for="token">GitHub 토큰</label>
-    <input type="password" id="token" autocomplete="off" placeholder="github_pat_...">
-    <label for="newPw">관리자 비밀번호 (12자 이상)</label>
-    <input type="password" id="newPw" autocomplete="new-password">
-    <label for="newPw2">비밀번호 확인</label>
-    <input type="password" id="newPw2" autocomplete="new-password">
+    <input type="text" id="token" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+    <label for="newPw">관리자 비밀번호 (8자 이상)</label>
+    <input type="text" id="newPw" autocomplete="off" spellcheck="false">
     <p class="hint">토큰은 이 비밀번호로 암호화돼서 저장소에 저장돼요. 비밀번호를 잊으면 토큰을 새로 만들어 여기서 다시 설정하면 돼요.</p>
     <div class="row" style="margin-top:12px"><button class="primary" id="setupBtn">설정하기</button></div>
   </section>
@@ -230,8 +228,7 @@ async function login() {
 async function setup() {
   const tok = $("token").value.trim(), pw = $("newPw").value;
   if (!tok) return alert("GitHub 토큰을 넣어 주세요.");
-  if (pw.length < 12) return alert("비밀번호는 12자 이상으로 정해 주세요.");
-  if (pw !== $("newPw2").value) return alert("비밀번호 확인이 달라요.");
+  if (pw.length < 8) return alert("비밀번호는 8자 이상으로 정해 주세요.");
   $("setupBtn").disabled = true;
   try {
     if (!(await openEditor(tok))) return show("setup");
@@ -243,7 +240,7 @@ async function setup() {
     alert("비밀번호를 저장하지 못했어요: " + e.message);
   } finally {
     $("setupBtn").disabled = false;
-    $("token").value = $("newPw").value = $("newPw2").value = "";
+    $("token").value = $("newPw").value = "";
   }
 }
 

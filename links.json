@@ -1,12 +1,28 @@
 {
   "subjects": [
-    { "id": "sci", "name": "과학", "emoji": "🧪" }
+    {
+      "id": "sci",
+      "name": "통합과학",
+      "emoji": "🧪"
+    },
+    {
+      "id": "mvetkcwz",
+      "name": "지구시스템과학",
+      "emoji": "🌏"
+    }
   ],
   "apps": [
     {
-      "title": "예시 앱",
-      "desc": "여기에 설명을 적어요",
-      "url": "https://example.com",
+      "title": "빅데이터-데이터 구조대",
+      "desc": "빅데이터를 활용해 동료들을 구하자!",
+      "url": "https://uzzint.github.io/data-rescue/",
+      "thumb": "",
+      "subject": "sci"
+    },
+    {
+      "title": "빅데이터-데이터 여행사",
+      "desc": "빅데이터를 이용해 여행 의뢰를 해결하자!",
+      "url": "https://uzzint.github.io/data-trip/",
       "thumb": "",
       "subject": "sci"
     }

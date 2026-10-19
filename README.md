@@ -1,5 +1,8 @@
 # earth_uz 🌏
 
-수업자료 웹앱 모음 → **https://uzzint.github.io/earth_uz/**
+수업자료 웹앱 모음
 
-링크를 추가하려면 `index.html`의 `const apps = [ ... ]` 목록에 한 줄을 추가하세요.
+- 보이는 화면: https://uzzint.github.io/earth_uz/
+- 관리자 화면: https://uzzint.github.io/earth_uz/admin.html
+
+링크 목록은 `links.json`에 저장되고, 관리자 화면에서 GitHub 토큰으로 로그인해 고칩니다.

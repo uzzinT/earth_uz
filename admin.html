@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>earth_uz · 관리자</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef6f1; --card: #ffffff; --ink: #1f3b2f; --muted: #5c7468;
+    --accent: #2f9e6e; --danger: #d0543f; --line: #d5e6dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1d18; --card: #172a23; --ink: #e4f2ea; --muted: #9db8aa;
+      --accent: #5fd39d; --danger: #ff8a75; --line: #27443a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Gowun Dodum", system-ui, sans-serif; line-height: 1.5; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+  h1 { font-family: "Jua", sans-serif; font-size: 32px; margin: 0 0 4px; }
+  h1 + p { margin: 0 0 24px; color: var(--muted); }
+  h1 + p a { color: var(--accent); }
+  .panel { background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=url], input[type=password], textarea {
+    width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink); font: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  button {
+    font: inherit; cursor: pointer; border-radius: 10px; padding: 8px 14px;
+    border: 2px solid var(--line); background: var(--card); color: var(--ink);
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-family: "Jua", sans-serif; font-size: 18px; }
+  button.danger { color: var(--danger); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .entry { display: grid; grid-template-columns: 160px 1fr; gap: 16px; }
+  @media (max-width: 560px) { .entry { grid-template-columns: 1fr; } }
+  .preview { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); }
+  .hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+  .tools { justify-content: space-between; margin-top: 12px; }
+  .savebar {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(6px);
+    border-top: 2px solid var(--line);
+  }
+  .savebar .row { max-width: 760px; margin: 0 auto; justify-content: space-between; }
+  #msg { color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🛠️ 관리자 화면</h1>
+  <p>여기서 고친 내용은 <a href="./" target="_blank">보이는 화면</a>에 1~2분 뒤 반영돼요.</p>
+
+  <section class="panel" id="login">
+    <label for="token">GitHub 토큰</label>
+    <input type="password" id="token" autocomplete="off" placeholder="github_pat_...">
+    <p class="hint">이 기기의 브라우저에만 저장돼요. 다른 사람과 같이 쓰는 컴퓨터에서는 다 쓴 뒤 로그아웃하세요.</p>
+    <div class="row" style="margin-top:12px"><button class="primary" id="loginBtn">로그인</button></div>
+  </section>
+
+  <div id="editor" hidden>
+    <div id="list"></div>
+    <div class="row">
+      <button id="addBtn">➕ 새 링크 추가</button>
+      <button id="logoutBtn" style="margin-left:auto">로그아웃</button>
+    </div>
+  </div>
+</main>
+
+<div class="savebar" id="savebar" hidden>
+  <div class="row">
+    <span id="msg"></span>
+    <button class="primary" id="saveBtn">💾 저장하기</button>
+  </div>
+</div>
+
+<template id="entryTpl">
+  <section class="panel">
+    <div class="entry">
+      <div>
+        <img class="preview" alt="썸네일 미리보기">
+        <label class="upload">
+          <span>🖼️ 썸네일 올리기</span>
+          <input type="file" accept="image/*">
+        </label>
+        <p class="hint">안 올리면 사이트 첫 화면이 자동으로 들어가요.</p>
+        <button class="clearThumb" hidden>썸네일 지우기</button>
+      </div>
+      <div>
+        <label>제목</label>
+        <input type="text" data-k="title" required>
+        <label>설명</label>
+        <textarea data-k="desc"></textarea>
+        <label>링크 주소</label>
+        <input type="url" data-k="url" placeholder="https://..." required>
+      </div>
+    </div>
+    <div class="row tools">
+      <div class="row">
+        <button class="up" aria-label="위로">⬆️</button>
+        <button class="down" aria-label="아래로">⬇️</button>
+      </div>
+      <button class="danger del">🗑️ 삭제</button>
+    </div>
+  </section>
+</template>
+
+<script src="common.js"></script>
+<script>
+const REPO = "uzzinT/earth_uz";
+const $ = id => document.getElementById(id);
+let token = "";
+let apps = [];
+let sha = "";
+const localPreviews = new Map(); // thumb path → blob URL, until Pages rebuilds with the uploaded file
+
+function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
+function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
+
+// GitHub's contents API speaks base64; go through bytes so Korean text survives.
+function toB64(text) {
+  let bin = "";
+  new TextEncoder().encode(text).forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+function fromB64(b64) {
+  return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\n/g, "")), c => c.charCodeAt(0)));
+}
+console.assert(fromB64(toB64("수업 앱 🌏")) === "수업 앱 🌏", "base64 roundtrip");
+
+async function gh(path, opts = {}) {
+  const res = await fetch("https://api.github.com/repos/" + REPO + "/contents/" + path, {
+    ...opts,
+    headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" },
+  });
+  if (!res.ok) throw Object.assign(new Error(res.status + " " + (await res.text())), { status: res.status });
+  return res.json();
+}
+
+function say(text) { $("msg").textContent = text; }
+
+async function login() {
+  token = $("token").value.trim() || load("gh_token");
+  if (!token) return;
+  try {
+    const file = await gh("links.json");
+    sha = file.sha;
+    apps = JSON.parse(fromB64(file.content));
+  } catch (e) {
+    token = "";
+    store("gh_token", null);
+    alert(e.status === 401 || e.status === 403 || e.status === 404
+      ? "토큰이 맞지 않거나 이 저장소 권한이 없어요. 토큰을 다시 확인해 주세요."
+      : "불러오지 못했어요: " + e.message);
+    return;
+  }
+  store("gh_token", token);
+  $("login").hidden = true;
+  $("editor").hidden = false;
+  $("savebar").hidden = false;
+  render();
+  say("불러왔어요.");
+}
+
+function render() {
+  $("list").replaceChildren(...apps.map((app, i) => {
+    const el = $("entryTpl").content.firstElementChild.cloneNode(true);
+    const img = el.querySelector(".preview");
+    const showThumb = () => {
+      img.src = localPreviews.get(app.thumb) || thumbSrc(app);
+      el.querySelector(".clearThumb").hidden = !app.thumb;
+    };
+    showThumb();
+
+    el.querySelectorAll("[data-k]").forEach(input => {
+      input.value = app[input.dataset.k] || "";
+      input.addEventListener("input", () => { app[input.dataset.k] = input.value; say("저장 안 된 변경이 있어요."); });
+      if (input.dataset.k === "url") input.addEventListener("change", showThumb);
+    });
+
+    el.querySelector("input[type=file]").addEventListener("change", e => uploadThumb(e.target.files[0], app, showThumb));
+    el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
+    el.querySelector(".up").onclick = () => move(i, -1);
+    el.querySelector(".down").onclick = () => move(i, 1);
+    el.querySelector(".del").onclick = () => {
+      if (!confirm("'" + (app.title || "제목 없음") + "'을(를) 삭제할까요?")) return;
+      apps.splice(i, 1); render(); say("저장 안 된 변경이 있어요.");
+    };
+    return el;
+  }));
+}
+
+function move(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= apps.length) return;
+  [apps[i], apps[j]] = [apps[j], apps[i]];
+  render();
+  say("저장 안 된 변경이 있어요.");
+}
+
+async function uploadThumb(file, app, done) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) return alert("5MB보다 작은 이미지를 골라 주세요.");
+  say("썸네일 올리는 중...");
+  const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(",")[1]); fr.readAsDataURL(file); });
+  const ext = (file.name.match(/\.\w+$/) || [".png"])[0].toLowerCase();
+  const path = "thumbs/" + Date.now() + ext;
+  try {
+    await gh(path, { method: "PUT", body: JSON.stringify({ message: "Add thumbnail", content: b64 }) });
+  } catch (e) {
+    return say("썸네일을 올리지 못했어요: " + e.message);
+  }
+  localPreviews.set(path, URL.createObjectURL(file));
+  app.thumb = path;
+  done();
+  say("썸네일을 올렸어요. '저장하기'를 눌러야 목록에 반영돼요.");
+}
+
+async function save() {
+  for (const a of apps) {
+    if (!a.title?.trim()) return alert("제목이 비어 있는 항목이 있어요.");
+    if (!/^https?:\/\/\S+$/.test(a.url?.trim() || "")) return alert("'" + a.title + "'의 링크 주소는 https:// 로 시작해야 해요.");
+  }
+  say("저장하는 중...");
+  $("saveBtn").disabled = true;
+  try {
+    const res = await gh("links.json", {
+      method: "PUT",
+      body: JSON.stringify({ message: "Update links", content: toB64(JSON.stringify(apps, null, 2) + "\n"), sha }),
+    });
+    sha = res.content.sha;
+    say("✅ 저장됐어요! 1~2분 뒤 사이트에 반영돼요.");
+  } catch (e) {
+    say(e.status === 409
+      ? "다른 곳에서 먼저 수정됐어요. 새로고침한 뒤 다시 고쳐 주세요."
+      : "저장하지 못했어요: " + e.message);
+  } finally {
+    $("saveBtn").disabled = false;
+  }
+}
+
+$("loginBtn").onclick = login;
+$("token").addEventListener("keydown", e => e.key === "Enter" && login());
+$("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
+$("saveBtn").onclick = save;
+$("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };
+addEventListener("beforeunload", e => { if ($("msg").textContent.includes("저장 안 된")) e.preventDefault(); });
+
+if (load("gh_token")) login();
+</script>
+</body>
+</html>

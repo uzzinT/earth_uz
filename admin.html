@@ -358,15 +358,15 @@ async function save() {
   }
 }
 
-// 👁️ button next to each password box toggles showing the text.
+// 🙈/🐵 button next to each password box toggles showing the text.
 document.querySelectorAll("input[type=password]").forEach(input => {
   const box = Object.assign(document.createElement("div"), { className: "pwbox" });
-  const eye = Object.assign(document.createElement("button"), { type: "button", textContent: "👁️", ariaLabel: "비밀번호 보기" });
+  const eye = Object.assign(document.createElement("button"), { type: "button", textContent: "🙈", ariaLabel: "비밀번호 보기" });
   eye.setAttribute("aria-pressed", "false");
   eye.onclick = () => {
     const show = input.type === "password";
     input.type = show ? "text" : "password";
-    eye.textContent = show ? "🙈" : "👁️";
+    eye.textContent = show ? "🐵" : "🙈";
     eye.setAttribute("aria-pressed", show);
   };
   input.replaceWith(box);

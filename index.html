@@ -46,6 +46,10 @@
   @media (prefers-reduced-motion: reduce) { .globe { animation: none; } }
   h1 { font-family: "Jua", sans-serif; font-size: clamp(26px, 5vw, 34px); margin: 0 0 0 8px; line-height: 1.2; display: inline-block; vertical-align: middle; }
   .globe { vertical-align: middle; }
+  /* Subject picker (home) gets the big header; inside a subject it stays compact. */
+  body.home header { padding: 56px 16px 32px; }
+  body.home .globe { font-size: 64px; }
+  body.home h1 { display: block; font-size: clamp(32px, 6vw, 48px); margin: 8px 0 4px; }
   header p { margin: 0; color: var(--muted); }
   main { max-width: 1040px; margin: 0 auto; padding: 0 16px 64px; }
   input[type=search] {
@@ -102,7 +106,7 @@
   footer .admin:hover, footer .admin:focus-visible { opacity: 1; }
 </style>
 </head>
-<body>
+<body class="home">
 <header>
   <div class="globe" aria-hidden="true">🌏</div>
   <h1>earth_uz</h1>
@@ -140,6 +144,7 @@ function render() {
   const q = $("q").value.trim().toLowerCase();
   const current = [...subjects, OTHER].find(s => s.id === decodeURIComponent(location.hash.slice(1)));
   $("crumb").hidden = !current;
+  document.body.classList.toggle("home", !current);
   if (current) $("subjTitle").textContent = current.emoji + " " + current.name;
 
   if (!current && !q) {

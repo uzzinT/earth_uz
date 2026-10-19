@@ -3,12 +3,12 @@
     {
       "id": "sci",
       "name": "통합과학",
-      "emoji": "🧪"
+      "image": "img/carina-nebula.jpg"
     },
     {
       "id": "mvetkcwz",
       "name": "지구시스템과학",
-      "emoji": "🌏"
+      "image": "img/earthrise.jpg"
     }
   ],
   "apps": [

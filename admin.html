@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>earth_uz · 관리자</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+<link rel="icon" href="img/earth.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
 <style>
@@ -28,9 +28,17 @@
   .panel { background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
   label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
   h2 { font-family: "Jua", sans-serif; font-weight: normal; font-size: 22px; margin: 24px 0 10px; }
-  .subj { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .subj input { text-align: left; }
-  .subj input:first-child { text-align: center; font-size: 20px; padding: 6px; }
+  .subj { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .subj .pick { padding: 0; width: 96px; aspect-ratio: 4 / 3; overflow: hidden; position: relative; }
+  .subj .pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .subj .pick span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #fff; background: #0009; }
+  dialog { border: none; border-radius: 18px; padding: 18px; max-width: 720px; width: calc(100% - 32px); background: var(--card); color: var(--ink); }
+  dialog::backdrop { background: #0008; }
+  .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; max-height: 60vh; overflow: auto; }
+  .gal button { padding: 0; overflow: hidden; text-align: left; }
+  .gal img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+  .gal span { display: block; font-size: 12px; padding: 4px 6px; }
+  .upload { cursor: pointer; }
   input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px;
     background: var(--bg); color: var(--ink); font: inherit;
@@ -58,7 +66,8 @@
   .savebar .row { max-width: 760px; margin: 0 auto; justify-content: space-between; }
   #msg { color: var(--muted); }
   .pwbox { display: flex; gap: 6px; }
-  .pwbox button { padding: 0 12px; font-size: 18px; }
+  .pwbox button { padding: 0 8px; display: grid; place-items: center; }
+  .pwbox img { width: 28px; height: 28px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -105,6 +114,15 @@
     <button class="primary" id="saveBtn">💾 저장하기</button>
   </div>
 </div>
+
+<dialog id="picker">
+  <b>과목 사진 고르기</b>
+  <div class="gal" id="gal"></div>
+  <div class="row" style="justify-content:space-between">
+    <label class="upload"><span>📤 내 사진 올리기</span> <input type="file" accept="image/*" id="pickFile"></label>
+    <button id="pickClose">닫기</button>
+  </div>
+</dialog>
 
 <template id="entryTpl">
   <section class="panel">
@@ -251,7 +269,7 @@ function render() {
   $("list").replaceChildren(...apps.map((app, i) => {
     const el = $("entryTpl").content.firstElementChild.cloneNode(true);
     el.querySelector("select").append(...[{ id: "", name: "기타 (분류 없음)" }, ...subjects]
-      .map(s => new Option((s.emoji ? s.emoji + " " : "") + (s.name || "이름 없음"), s.id)));
+      .map(s => new Option(s.name || "이름 없음", s.id)));
     const img = el.querySelector(".preview");
     const showThumb = () => {
       img.src = localPreviews.get(app.thumb) || thumbSrc(app);
@@ -265,7 +283,7 @@ function render() {
       if (input.dataset.k === "url") input.addEventListener("change", showThumb);
     });
 
-    el.querySelector("input[type=file]").addEventListener("change", e => uploadThumb(e.target.files[0], app, showThumb));
+    el.querySelector("input[type=file]").addEventListener("change", e => uploadImage(e.target.files[0], app, "thumb", showThumb));
     el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
     el.querySelector(".up").onclick = () => move(apps, i, -1);
     el.querySelector(".down").onclick = () => move(apps, i, 1);
@@ -291,9 +309,10 @@ function renderSubjects() {
   $("subjList").replaceChildren(...subjects.map((s, i) => {
     const row = document.createElement("div");
     row.className = "subj";
-    const emoji = Object.assign(document.createElement("input"), { type: "text", value: s.emoji || "", placeholder: "📚", ariaLabel: "과목 이모지" });
+    const pick = Object.assign(document.createElement("button"), { className: "pick", title: "사진 바꾸기", onclick: () => openPicker(s) });
+    pick.append(Object.assign(document.createElement("img"), { src: localPreviews.get(s.image) || subjectImage(s, i), alt: "" }),
+      Object.assign(document.createElement("span"), { textContent: "사진 바꾸기" }));
     const name = Object.assign(document.createElement("input"), { type: "text", value: s.name, placeholder: "과목 이름", ariaLabel: "과목 이름" });
-    emoji.oninput = () => { s.emoji = emoji.value; dirty(); };
     name.oninput = () => { s.name = name.value; dirty(); };
     name.onchange = render; // refresh the subject dropdowns on the app cards
     const tools = document.createElement("div");
@@ -311,27 +330,39 @@ function renderSubjects() {
         dirty();
       }), { className: "danger" }),
     );
-    row.append(emoji, name, tools);
+    row.append(pick, name, tools);
     return row;
   }));
 }
 
-async function uploadThumb(file, app, done) {
+let picking = null; // subject whose photo the picker is choosing
+function openPicker(s) {
+  picking = s;
+  $("gal").replaceChildren(...GALLERY.map(g => {
+    const b = Object.assign(document.createElement("button"), { onclick: () => { s.image = g.src; $("picker").close(); render(); dirty(); } });
+    b.append(Object.assign(document.createElement("img"), { src: g.src, alt: "" }), Object.assign(document.createElement("span"), { textContent: g.name }));
+    return b;
+  }));
+  $("picker").showModal();
+}
+
+// Uploads an image to thumbs/ and stores its path in obj[key].
+async function uploadImage(file, obj, key, done) {
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) return alert("5MB보다 작은 이미지를 골라 주세요.");
-  say("썸네일 올리는 중...");
+  say("사진 올리는 중...");
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(",")[1]); fr.readAsDataURL(file); });
   const ext = (file.name.match(/\.\w+$/) || [".png"])[0].toLowerCase();
   const path = "thumbs/" + Date.now() + ext;
   try {
     await gh(path, { method: "PUT", body: JSON.stringify({ message: "Add thumbnail", content: b64 }) });
   } catch (e) {
-    return say("썸네일을 올리지 못했어요: " + e.message);
+    return say("사진을 올리지 못했어요: " + e.message);
   }
   localPreviews.set(path, URL.createObjectURL(file));
-  app.thumb = path;
+  obj[key] = path;
   done();
-  say("썸네일을 올렸어요. '저장하기'를 눌러야 목록에 반영돼요.");
+  say("사진을 올렸어요. '저장하기'를 눌러야 반영돼요.");
 }
 
 async function save() {
@@ -358,15 +389,17 @@ async function save() {
   }
 }
 
-// 🙈/🐵 button next to each password box toggles showing the text.
+// Monkey button (Fluent 3D, MIT) next to each password box toggles showing the text.
 document.querySelectorAll("input[type=password]").forEach(input => {
   const box = Object.assign(document.createElement("div"), { className: "pwbox" });
-  const eye = Object.assign(document.createElement("button"), { type: "button", textContent: "🙈", ariaLabel: "비밀번호 보기" });
+  const eye = Object.assign(document.createElement("button"), { type: "button", ariaLabel: "비밀번호 보기" });
+  const face = Object.assign(document.createElement("img"), { src: "img/monkey-hide.png", alt: "" });
+  eye.append(face);
   eye.setAttribute("aria-pressed", "false");
   eye.onclick = () => {
     const show = input.type === "password";
     input.type = show ? "text" : "password";
-    eye.textContent = show ? "🐵" : "🙈";
+    face.src = show ? "img/monkey-see.png" : "img/monkey-hide.png";
     eye.setAttribute("aria-pressed", show);
   };
   input.replaceWith(box);
@@ -377,7 +410,20 @@ $("loginBtn").onclick = login;
 $("pw").addEventListener("keydown", e => e.key === "Enter" && login());
 $("setupBtn").onclick = setup;
 $("resetLink").onclick = e => { e.preventDefault(); show("setup"); };
-$("addSubjBtn").onclick = () => { subjects.push({ id: Date.now().toString(36), name: "", emoji: "" }); render(); dirty(); };
+$("addSubjBtn").onclick = () => {
+  // New subjects start with a NASA photo no other subject uses yet.
+  const free = GALLERY.find(g => !subjects.some(s => s.image === g.src)) || GALLERY[0];
+  subjects.push({ id: Date.now().toString(36), name: "", image: free.src });
+  render();
+  dirty();
+};
+$("pickClose").onclick = () => $("picker").close();
+$("pickFile").addEventListener("change", e => {
+  const s = picking;
+  $("picker").close();
+  uploadImage(e.target.files[0], s, "image", render);
+  e.target.value = "";
+});
 $("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "", subject: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
 $("saveBtn").onclick = save;
 $("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };

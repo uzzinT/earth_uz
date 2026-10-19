@@ -61,11 +61,23 @@
   <h1>🛠️ 관리자 화면</h1>
   <p>여기서 고친 내용은 <a href="./" target="_blank">보이는 화면</a>에 1~2분 뒤 반영돼요.</p>
 
-  <section class="panel" id="login">
+  <section class="panel" id="login" hidden>
+    <label for="pw">관리자 비밀번호</label>
+    <input type="password" id="pw" autocomplete="current-password">
+    <div class="row" style="margin-top:12px"><button class="primary" id="loginBtn">들어가기</button></div>
+    <p class="hint"><a href="#" id="resetLink">토큰이 만료됐거나 비밀번호를 바꾸고 싶어요</a></p>
+  </section>
+
+  <section class="panel" id="setup" hidden>
+    <p style="margin-top:0"><b>처음 설정</b> · GitHub 토큰을 한 번만 넣고 관리자 비밀번호를 정해요.</p>
     <label for="token">GitHub 토큰</label>
     <input type="password" id="token" autocomplete="off" placeholder="github_pat_...">
-    <p class="hint">이 기기의 브라우저에만 저장돼요. 다른 사람과 같이 쓰는 컴퓨터에서는 다 쓴 뒤 로그아웃하세요.</p>
-    <div class="row" style="margin-top:12px"><button class="primary" id="loginBtn">로그인</button></div>
+    <label for="newPw">관리자 비밀번호 (12자 이상)</label>
+    <input type="password" id="newPw" autocomplete="new-password">
+    <label for="newPw2">비밀번호 확인</label>
+    <input type="password" id="newPw2" autocomplete="new-password">
+    <p class="hint">토큰은 이 비밀번호로 암호화돼서 저장소에 저장돼요. 비밀번호를 잊으면 토큰을 새로 만들어 여기서 다시 설정하면 돼요.</p>
+    <div class="row" style="margin-top:12px"><button class="primary" id="setupBtn">설정하기</button></div>
   </section>
 
   <div id="editor" hidden>
@@ -124,19 +136,34 @@ let apps = [];
 let sha = "";
 const localPreviews = new Map(); // thumb path → blob URL, until Pages rebuilds with the uploaded file
 
-function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
-function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
+// Token lives only for this tab session; the password unlocks it again next time.
+function store(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} }
+function load(k) { try { return sessionStorage.getItem(k) || ""; } catch { return ""; } }
 
+const bytesToB64 = bytes => { let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+const b64ToBytes = b64 => Uint8Array.from(atob(b64.replace(/\n/g, "")), c => c.charCodeAt(0));
 // GitHub's contents API speaks base64; go through bytes so Korean text survives.
-function toB64(text) {
-  let bin = "";
-  new TextEncoder().encode(text).forEach(b => bin += String.fromCharCode(b));
-  return btoa(bin);
-}
-function fromB64(b64) {
-  return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\n/g, "")), c => c.charCodeAt(0)));
-}
+const toB64 = text => bytesToB64(new TextEncoder().encode(text));
+const fromB64 = b64 => new TextDecoder().decode(b64ToBytes(b64));
 console.assert(fromB64(toB64("수업 앱 🌏")) === "수업 앱 🌏", "base64 roundtrip");
+
+// auth.json is public, so the token in it is AES-GCM encrypted with a key stretched from the password.
+const ITER = 600000;
+async function passwordKey(pw, salt, iter) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function encryptToken(tok, pw) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await passwordKey(pw, salt, ITER), new TextEncoder().encode(tok));
+  return { iter: ITER, salt: bytesToB64(salt), iv: bytesToB64(iv), data: bytesToB64(new Uint8Array(data)) };
+}
+async function decryptToken(auth, pw) { // throws on a wrong password
+  const key = await passwordKey(pw, b64ToBytes(auth.salt), auth.iter);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(auth.iv) }, key, b64ToBytes(auth.data)));
+}
 
 async function gh(path, opts = {}) {
   const res = await fetch("https://api.github.com/repos/" + REPO + "/contents/" + path, {
@@ -149,9 +176,11 @@ async function gh(path, opts = {}) {
 
 function say(text) { $("msg").textContent = text; }
 
-async function login() {
-  token = $("token").value.trim() || load("gh_token");
-  if (!token) return;
+function show(id) { for (const s of ["login", "setup", "editor", "savebar"]) $(s).hidden = !(s === id || (id === "editor" && s === "savebar")); }
+
+// Loads links.json with the token; returns false (after telling the user) if the token doesn't work.
+async function openEditor(tok) {
+  token = tok;
   try {
     const file = await gh("links.json");
     sha = file.sha;
@@ -160,16 +189,50 @@ async function login() {
     token = "";
     store("gh_token", null);
     alert(e.status === 401 || e.status === 403 || e.status === 404
-      ? "토큰이 맞지 않거나 이 저장소 권한이 없어요. 토큰을 다시 확인해 주세요."
+      ? "토큰이 만료됐거나 이 저장소 권한이 없어요. 새 토큰으로 다시 설정해 주세요."
       : "불러오지 못했어요: " + e.message);
-    return;
+    return false;
   }
   store("gh_token", token);
-  $("login").hidden = true;
-  $("editor").hidden = false;
-  $("savebar").hidden = false;
+  show("editor");
   render();
   say("불러왔어요.");
+  return true;
+}
+
+async function login() {
+  const pw = $("pw").value;
+  if (!pw) return;
+  $("loginBtn").disabled = true;
+  try {
+    const auth = await fetch("auth.json", { cache: "no-cache" }).then(r => r.json());
+    let tok;
+    try { tok = await decryptToken(auth, pw); }
+    catch { return alert("비밀번호가 틀렸어요."); }
+    if (!(await openEditor(tok))) show("setup");
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+}
+
+async function setup() {
+  const tok = $("token").value.trim(), pw = $("newPw").value;
+  if (!tok) return alert("GitHub 토큰을 넣어 주세요.");
+  if (pw.length < 12) return alert("비밀번호는 12자 이상으로 정해 주세요.");
+  if (pw !== $("newPw2").value) return alert("비밀번호 확인이 달라요.");
+  $("setupBtn").disabled = true;
+  try {
+    if (!(await openEditor(tok))) return show("setup");
+    const body = { message: "Set admin password", content: toB64(JSON.stringify(await encryptToken(tok, pw)) + "\n") };
+    try { body.sha = (await gh("auth.json")).sha; } catch (e) { if (e.status !== 404) throw e; }
+    await gh("auth.json", { method: "PUT", body: JSON.stringify(body) });
+    say("✅ 비밀번호를 설정했어요. 1~2분 뒤부터 다른 기기에서도 비밀번호로 들어올 수 있어요.");
+  } catch (e) {
+    alert("비밀번호를 저장하지 못했어요: " + e.message);
+  } finally {
+    $("setupBtn").disabled = false;
+    $("token").value = $("newPw").value = $("newPw2").value = "";
+  }
 }
 
 function render() {
@@ -250,13 +313,16 @@ async function save() {
 }
 
 $("loginBtn").onclick = login;
-$("token").addEventListener("keydown", e => e.key === "Enter" && login());
+$("pw").addEventListener("keydown", e => e.key === "Enter" && login());
+$("setupBtn").onclick = setup;
+$("resetLink").onclick = e => { e.preventDefault(); show("setup"); };
 $("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
 $("saveBtn").onclick = save;
 $("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };
 addEventListener("beforeunload", e => { if ($("msg").textContent.includes("저장 안 된")) e.preventDefault(); });
 
-if (load("gh_token")) login();
+if (load("gh_token")) openEditor(load("gh_token"));
+else fetch("auth.json", { cache: "no-cache" }).then(r => show(r.ok ? "login" : "setup"), () => show("setup"));
 </script>
 </body>
 </html>

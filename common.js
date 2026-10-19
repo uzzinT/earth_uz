@@ -4,6 +4,11 @@ function safeUrl(u) {
   catch { return ""; }
 }
 
+// links.json used to be a bare app array; accept both shapes.
+function normalize(data) {
+  return Array.isArray(data) ? { subjects: [], apps: data } : { subjects: data.subjects || [], apps: data.apps || [] };
+}
+
 // shortcut: no thumbnail → free WordPress mShots screenshot of the site's first screen;
 // the first load can show a placeholder for ~1 min. Upload a thumbnail if it stays wrong.
 function thumbSrc(app) {

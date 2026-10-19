@@ -84,6 +84,16 @@
   .body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 4px; }
   .name { font-family: "Jua", sans-serif; font-size: 20px; }
   .desc { color: var(--muted); font-size: 15px; }
+  a.subj { align-items: center; text-align: center; padding: 28px 16px; gap: 6px; }
+  a.subj .emoji { font-size: 52px; line-height: 1.1; }
+  a.subj .count { color: var(--muted); font-size: 14px; }
+  .crumb { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .crumb a {
+    color: var(--accent); text-decoration: none; padding: 6px 14px;
+    border: 2px solid var(--line); border-radius: 999px; background: var(--card); white-space: nowrap;
+  }
+  .crumb a:hover, .crumb a:focus-visible { border-color: var(--accent); outline: none; }
+  .crumb h2 { font-family: "Jua", sans-serif; font-weight: normal; font-size: 26px; margin: 0; }
   .empty { text-align: center; color: var(--muted); padding: 32px; }
   footer { text-align: center; color: var(--muted); font-size: 14px; padding-bottom: 32px; }
   footer .admin { text-decoration: none; opacity: .35; margin-left: 6px; }
@@ -99,6 +109,7 @@
 
 <main>
   <input type="search" id="q" placeholder="🔍 앱 이름이나 설명으로 찾기" aria-label="앱 검색">
+  <div class="crumb" id="crumb" hidden><a href="#">← 전체 과목</a><h2 id="subjTitle"></h2></div>
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>찾는 앱이 없어요 🥲</p>
 </main>
@@ -107,13 +118,45 @@
 
 <script src="common.js"></script>
 <script>
-let apps = [];
-const grid = document.getElementById("grid");
-const empty = document.getElementById("empty");
+let apps = [], subjects = [];
+const OTHER = { id: "_other", name: "기타", emoji: "📦" };
+const $ = id => document.getElementById(id);
+const grid = $("grid");
+const empty = $("empty");
 
-function render(query) {
-  const q = query.trim().toLowerCase();
-  const shown = apps.filter(a => (a.title + " " + a.desc).toLowerCase().includes(q));
+// Apps whose subject was deleted or never set land in "기타".
+const subjectOf = a => subjects.some(s => s.id === a.subject) ? a.subject : OTHER.id;
+
+function span(cls, text) {
+  const el = document.createElement("span");
+  el.className = cls;
+  el.textContent = text;
+  return el;
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const current = [...subjects, OTHER].find(s => s.id === decodeURIComponent(location.hash.slice(1)));
+  $("crumb").hidden = !current;
+  if (current) $("subjTitle").textContent = current.emoji + " " + current.name;
+
+  if (!current && !q) {
+    const list = [...subjects, OTHER]
+      .map(s => ({ s, n: apps.filter(a => subjectOf(a) === s.id).length }))
+      .filter(({ s, n }) => s !== OTHER || n > 0);
+    grid.replaceChildren(...list.map(({ s, n }) => {
+      const card = document.createElement("a");
+      card.className = "card subj";
+      card.href = "#" + encodeURIComponent(s.id);
+      card.append(span("emoji", s.emoji || "📚"), span("name", s.name), span("count", "앱 " + n + "개"));
+      return card;
+    }));
+    empty.textContent = "아직 과목이 없어요.";
+    empty.hidden = list.length > 0;
+    return;
+  }
+
+  const shown = apps.filter(a => (!current || subjectOf(a) === current.id) && (a.title + " " + a.desc).toLowerCase().includes(q));
   grid.replaceChildren(...shown.map(a => {
     const card = document.createElement("a");
     card.className = "card";
@@ -129,25 +172,21 @@ function render(query) {
 
     const body = document.createElement("div");
     body.className = "body";
-    const name = document.createElement("span");
-    name.className = "name";
-    name.textContent = a.title;
-    const desc = document.createElement("span");
-    desc.className = "desc";
-    desc.textContent = a.desc || "";
-    body.append(name, desc);
+    body.append(span("name", a.title), span("desc", a.desc || ""));
 
     card.append(img, body);
     return card;
   }));
+  empty.textContent = q ? "찾는 앱이 없어요 🥲" : "이 과목에는 아직 앱이 없어요.";
   empty.hidden = shown.length > 0;
 }
 
-document.getElementById("q").addEventListener("input", e => render(e.target.value));
+$("q").addEventListener("input", render);
+addEventListener("hashchange", () => { $("q").value = ""; render(); scrollTo(0, 0); });
 
 fetch("links.json", { cache: "no-cache" })
   .then(r => r.json())
-  .then(data => { apps = data; render(""); })
+  .then(data => { ({ subjects, apps } = normalize(data)); render(); })
   .catch(() => { empty.textContent = "목록을 불러오지 못했어요. 새로고침해 주세요."; empty.hidden = false; });
 </script>
 </body>

@@ -1,8 +1,14 @@
-[
-  {
-    "title": "예시 앱",
-    "desc": "여기에 설명을 적어요",
-    "url": "https://example.com",
-    "thumb": ""
-  }
-]
+{
+  "subjects": [
+    { "id": "sci", "name": "과학", "emoji": "🧪" }
+  ],
+  "apps": [
+    {
+      "title": "예시 앱",
+      "desc": "여기에 설명을 적어요",
+      "url": "https://example.com",
+      "thumb": "",
+      "subject": "sci"
+    }
+  ]
+}

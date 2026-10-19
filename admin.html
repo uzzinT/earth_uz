@@ -27,7 +27,11 @@
   h1 + p a { color: var(--accent); }
   .panel { background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
   label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
-  input[type=text], input[type=url], input[type=password], textarea {
+  h2 { font-family: "Jua", sans-serif; font-weight: normal; font-size: 22px; margin: 24px 0 10px; }
+  .subj { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .subj input { text-align: left; }
+  .subj input:first-child { text-align: center; font-size: 20px; padding: 6px; }
+  input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px;
     background: var(--bg); color: var(--ink); font: inherit;
   }
@@ -81,6 +85,12 @@
   </section>
 
   <div id="editor" hidden>
+    <h2>📚 과목</h2>
+    <section class="panel">
+      <div id="subjList"></div>
+      <button id="addSubjBtn" style="margin-top:8px">➕ 과목 추가</button>
+    </section>
+    <h2>🔗 앱</h2>
     <div id="list"></div>
     <div class="row">
       <button id="addBtn">➕ 새 링크 추가</button>
@@ -109,6 +119,8 @@
         <button class="clearThumb" hidden>썸네일 지우기</button>
       </div>
       <div>
+        <label>과목</label>
+        <select data-k="subject"></select>
         <label>제목</label>
         <input type="text" data-k="title" required>
         <label>설명</label>
@@ -132,7 +144,7 @@
 const REPO = "uzzinT/earth_uz";
 const $ = id => document.getElementById(id);
 let token = "";
-let apps = [];
+let apps = [], subjects = [];
 let sha = "";
 const localPreviews = new Map(); // thumb path → blob URL, until Pages rebuilds with the uploaded file
 
@@ -184,7 +196,7 @@ async function openEditor(tok) {
   try {
     const file = await gh("links.json");
     sha = file.sha;
-    apps = JSON.parse(fromB64(file.content));
+    ({ subjects, apps } = normalize(JSON.parse(fromB64(file.content))));
   } catch (e) {
     token = "";
     store("gh_token", null);
@@ -236,8 +248,11 @@ async function setup() {
 }
 
 function render() {
+  renderSubjects();
   $("list").replaceChildren(...apps.map((app, i) => {
     const el = $("entryTpl").content.firstElementChild.cloneNode(true);
+    el.querySelector("select").append(...[{ id: "", name: "기타 (분류 없음)" }, ...subjects]
+      .map(s => new Option((s.emoji ? s.emoji + " " : "") + (s.name || "이름 없음"), s.id)));
     const img = el.querySelector(".preview");
     const showThumb = () => {
       img.src = localPreviews.get(app.thumb) || thumbSrc(app);
@@ -253,8 +268,8 @@ function render() {
 
     el.querySelector("input[type=file]").addEventListener("change", e => uploadThumb(e.target.files[0], app, showThumb));
     el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
-    el.querySelector(".up").onclick = () => move(i, -1);
-    el.querySelector(".down").onclick = () => move(i, 1);
+    el.querySelector(".up").onclick = () => move(apps, i, -1);
+    el.querySelector(".down").onclick = () => move(apps, i, 1);
     el.querySelector(".del").onclick = () => {
       if (!confirm("'" + (app.title || "제목 없음") + "'을(를) 삭제할까요?")) return;
       apps.splice(i, 1); render(); say("저장 안 된 변경이 있어요.");
@@ -263,12 +278,43 @@ function render() {
   }));
 }
 
-function move(i, d) {
+function move(arr, i, d) {
   const j = i + d;
-  if (j < 0 || j >= apps.length) return;
-  [apps[i], apps[j]] = [apps[j], apps[i]];
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
   render();
-  say("저장 안 된 변경이 있어요.");
+  dirty();
+}
+
+const dirty = () => say("저장 안 된 변경이 있어요.");
+
+function renderSubjects() {
+  $("subjList").replaceChildren(...subjects.map((s, i) => {
+    const row = document.createElement("div");
+    row.className = "subj";
+    const emoji = Object.assign(document.createElement("input"), { type: "text", value: s.emoji || "", placeholder: "📚", ariaLabel: "과목 이모지" });
+    const name = Object.assign(document.createElement("input"), { type: "text", value: s.name, placeholder: "과목 이름", ariaLabel: "과목 이름" });
+    emoji.oninput = () => { s.emoji = emoji.value; dirty(); };
+    name.oninput = () => { s.name = name.value; dirty(); };
+    name.onchange = render; // refresh the subject dropdowns on the app cards
+    const tools = document.createElement("div");
+    tools.className = "row";
+    const btn = (text, label, fn) => Object.assign(document.createElement("button"), { textContent: text, ariaLabel: label, onclick: fn });
+    tools.append(
+      btn("⬆️", "위로", () => move(subjects, i, -1)),
+      btn("⬇️", "아래로", () => move(subjects, i, 1)),
+      Object.assign(btn("🗑️", "과목 삭제", () => {
+        const n = apps.filter(a => a.subject === s.id).length;
+        if (!confirm("'" + (s.name || "이름 없음") + "' 과목을 삭제할까요?" + (n ? "\n이 과목의 앱 " + n + "개는 '기타'로 옮겨져요." : ""))) return;
+        apps.forEach(a => { if (a.subject === s.id) a.subject = ""; });
+        subjects.splice(i, 1);
+        render();
+        dirty();
+      }), { className: "danger" }),
+    );
+    row.append(emoji, name, tools);
+    return row;
+  }));
 }
 
 async function uploadThumb(file, app, done) {
@@ -290,6 +336,7 @@ async function uploadThumb(file, app, done) {
 }
 
 async function save() {
+  if (subjects.some(s => !s.name.trim())) return alert("이름이 비어 있는 과목이 있어요.");
   for (const a of apps) {
     if (!a.title?.trim()) return alert("제목이 비어 있는 항목이 있어요.");
     if (!/^https?:\/\/\S+$/.test(a.url?.trim() || "")) return alert("'" + a.title + "'의 링크 주소는 https:// 로 시작해야 해요.");
@@ -299,7 +346,7 @@ async function save() {
   try {
     const res = await gh("links.json", {
       method: "PUT",
-      body: JSON.stringify({ message: "Update links", content: toB64(JSON.stringify(apps, null, 2) + "\n"), sha }),
+      body: JSON.stringify({ message: "Update links", content: toB64(JSON.stringify({ subjects, apps }, null, 2) + "\n"), sha }),
     });
     sha = res.content.sha;
     say("✅ 저장됐어요! 1~2분 뒤 사이트에 반영돼요.");
@@ -316,7 +363,8 @@ $("loginBtn").onclick = login;
 $("pw").addEventListener("keydown", e => e.key === "Enter" && login());
 $("setupBtn").onclick = setup;
 $("resetLink").onclick = e => { e.preventDefault(); show("setup"); };
-$("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
+$("addSubjBtn").onclick = () => { subjects.push({ id: Date.now().toString(36), name: "", emoji: "" }); render(); dirty(); };
+$("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "", subject: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
 $("saveBtn").onclick = save;
 $("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };
 addEventListener("beforeunload", e => { if ($("msg").textContent.includes("저장 안 된")) e.preventDefault(); });

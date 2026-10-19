@@ -86,6 +86,8 @@
   .desc { color: var(--muted); font-size: 15px; }
   .empty { text-align: center; color: var(--muted); padding: 32px; }
   footer { text-align: center; color: var(--muted); font-size: 14px; padding-bottom: 32px; }
+  footer .admin { text-decoration: none; opacity: .35; margin-left: 6px; }
+  footer .admin:hover, footer .admin:focus-visible { opacity: 1; }
 </style>
 </head>
 <body>
@@ -101,7 +103,7 @@
   <p class="empty" id="empty" hidden>찾는 앱이 없어요 🥲</p>
 </main>
 
-<footer>made by @earth._.uz</footer>
+<footer>made by @earth._.uz <a class="admin" href="admin.html" aria-label="관리자 모드" title="관리자 모드">⚙️</a></footer>
 
 <script src="common.js"></script>
 <script>

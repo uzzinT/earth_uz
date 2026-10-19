@@ -38,7 +38,8 @@
   .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; max-height: 60vh; overflow: auto; }
   .gal button { padding: 0; overflow: hidden; text-align: left; }
   .gal img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
-  .gal span { display: block; font-size: 12px; padding: 4px 6px; }
+  .gal span { display: block; font-size: 12px; padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gal h3 { grid-column: 1 / -1; margin: 8px 0 0; font-size: 16px; }
   .upload { cursor: pointer; }
   input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px;
@@ -158,6 +159,7 @@
   </section>
 </template>
 
+<script src="gallery.js"></script>
 <script src="common.js"></script>
 <script>
 const REPO = "uzzinT/earth_uz";
@@ -339,10 +341,11 @@ function renderSubjects() {
 let picking = null; // subject whose photo the picker is choosing
 function openPicker(s) {
   picking = s;
-  $("gal").replaceChildren(...GALLERY.map(g => {
-    const b = Object.assign(document.createElement("button"), { onclick: () => { s.image = g.src; $("picker").close(); render(); dirty(); } });
-    b.append(Object.assign(document.createElement("img"), { src: g.src, alt: "" }), Object.assign(document.createElement("span"), { textContent: g.name }));
-    return b;
+  $("gal").replaceChildren(...GALLERY.flatMap((g, i) => {
+    const b = Object.assign(document.createElement("button"), { title: g.name, onclick: () => { s.image = g.src; $("picker").close(); render(); dirty(); } });
+    b.append(Object.assign(document.createElement("img"), { src: g.src, alt: "", loading: "lazy" }), Object.assign(document.createElement("span"), { textContent: g.name }));
+    const isNewGroup = i === 0 || GALLERY[i - 1].group !== g.group;
+    return isNewGroup ? [Object.assign(document.createElement("h3"), { textContent: g.group }), b] : [b];
   }));
   $("picker").showModal();
 }

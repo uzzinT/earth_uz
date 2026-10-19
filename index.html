@@ -126,6 +126,7 @@
   [hidden] { display: none !important; }
   .empty { text-align: center; color: var(--muted); padding: 32px; }
   footer { text-align: center; color: var(--muted); font-size: 14px; padding-bottom: 32px; }
+  footer .credit { color: inherit; }
   footer .admin { text-decoration: none; opacity: .35; margin-left: 6px; }
   footer .admin:hover, footer .admin:focus-visible { opacity: 1; }
 </style>
@@ -144,8 +145,9 @@
   <p class="empty" id="empty" hidden>찾는 앱이 없어요 🥲</p>
 </main>
 
-<footer>made by @earth._.uz · 사진 NASA <a class="admin" href="admin.html" aria-label="관리자 모드" title="관리자 모드">⚙️</a></footer>
+<footer>made by @earth._.uz · <a class="credit" href="credits.html">사진 출처</a> <a class="admin" href="admin.html" aria-label="관리자 모드" title="관리자 모드">⚙️</a></footer>
 
+<script src="gallery.js"></script>
 <script src="common.js"></script>
 <script>
 let apps = [], subjects = [];

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>earth_uz · 사진 출처</title>
+<link rel="icon" href="img/earth.jpg">
+<style>
+  @font-face { font-family: Paperlogy; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: Paperlogy; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+  :root { --bg: #eef6f1; --card: #fff; --ink: #1f3b2f; --muted: #5c7468; --accent: #2f9e6e; --line: #d5e6dc; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1d18; --card: #172a23; --ink: #e4f2ea; --muted: #9db8aa; --accent: #5fd39d; --line: #27443a; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: Paperlogy, system-ui, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 24px 0 8px; }
+  a { color: var(--accent); }
+  .row { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 6px; }
+  .row img { width: 72px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
+  .row small { color: var(--muted); display: block; word-break: break-word; }
+</style>
+</head>
+<body>
+<main>
+  <h1>사진 출처</h1>
+  <p><a href="./">← 처음으로</a> · NASA 사진은 퍼블릭 도메인이고, 나머지는 위키미디어 공용의 자유 라이선스 사진이에요.</p>
+  <div id="list"></div>
+</main>
+<script src="gallery.js"></script>
+<script>
+const list = document.getElementById("list");
+GALLERY.forEach((g, i) => {
+  if (i === 0 || GALLERY[i - 1].group !== g.group) list.append(Object.assign(document.createElement("h2"), { textContent: g.group }));
+  const row = document.createElement("div");
+  row.className = "row";
+  const info = document.createElement("div");
+  const link = Object.assign(document.createElement("a"), { href: g.page, target: "_blank", rel: "noopener", textContent: g.name });
+  info.append(link, Object.assign(document.createElement("small"), { textContent: (g.artist || "작가 미상") + " · " + g.license }));
+  row.append(Object.assign(document.createElement("img"), { src: g.src, alt: "", loading: "lazy" }), info);
+  list.append(row);
+});
+</script>
+</body>
+</html>

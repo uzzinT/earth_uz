@@ -14,6 +14,11 @@
       "id": "mveymhc6",
       "name": "행성우주과학",
       "image": "img/earthrise.jpg"
+    },
+    {
+      "id": "mvg4xbs5",
+      "name": "이것저것",
+      "image": "img/nasa/gsfc_20171208_archive_e000001.jpg"
     }
   ],
   "apps": [
@@ -26,10 +31,31 @@
     },
     {
       "title": "빅데이터-데이터 여행사",
-      "desc": "빅데이터를 이용해 여행 의뢰를 해결하자!",
+      "desc": "빅데이터로 여행 의뢰를 해결하자!",
       "url": "https://uzzint.github.io/data-trip/",
       "thumb": "",
       "subject": "sci"
+    },
+    {
+      "title": "중력실험실",
+      "desc": "진자 주기로 우리학교 중력 측정하기",
+      "url": "https://uzzint.github.io/gravity-lab/",
+      "thumb": "",
+      "subject": "mvg4xbs5"
+    },
+    {
+      "title": "월하정인 해석하기",
+      "desc": "신윤복의 월하정인에서 과학적 사실 밝혀내기",
+      "url": "https://uzzint.github.io/eclipse/",
+      "thumb": "",
+      "subject": "mvg4xbs5"
+    },
+    {
+      "title": "조석X좌표계 탐구",
+      "desc": "조석 현상을 좌표계를 통해 해석해보기",
+      "url": "https://uzzint.github.io/tide",
+      "thumb": "",
+      "subject": "mvg4xbs5"
     }
   ]
 }

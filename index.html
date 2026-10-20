@@ -139,7 +139,7 @@
 
 <main class="wrap">
   <input type="search" id="q" placeholder="앱 이름이나 설명으로 찾기" aria-label="앱 검색">
-  <div class="crumb" id="crumb" hidden><a href="#">← 전체 과목</a><h2 id="subjTitle"></h2></div>
+  <div class="crumb" id="crumb" hidden><a href="./" id="backLink">← 전체 과목</a><h2 id="subjTitle"></h2></div>
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>찾는 앱이 없어요 🥲</p>
 </main>
@@ -252,7 +252,14 @@ function render() {
 $("q").addEventListener("input", render);
 $("qrClose").onclick = () => $("qrBig").close();
 $("qrBig").addEventListener("click", e => { if (e.target === $("qrBig")) $("qrBig").close(); }); // backdrop click
-addEventListener("hashchange", () => { $("q").value = ""; render(); scrollTo(0, 0); });
+// Keep the address bar free of a bare "#" (old shared links, or "#" typed by hand).
+const cleanUrl = () => location.pathname + location.search;
+const tidyUrl = () => { if (location.href.endsWith("#")) history.replaceState(null, "", cleanUrl()); };
+const onRoute = () => { tidyUrl(); $("q").value = ""; render(); scrollTo(0, 0); };
+addEventListener("hashchange", onRoute);
+addEventListener("popstate", onRoute);
+$("backLink").addEventListener("click", e => { e.preventDefault(); history.pushState(null, "", cleanUrl()); onRoute(); });
+tidyUrl();
 
 fetch("links.json", { cache: "no-cache" })
   .then(r => r.json())

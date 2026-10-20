@@ -240,12 +240,21 @@ async function decryptToken(auth, pw) { // throws on a wrong password
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(auth.iv) }, key, b64ToBytes(auth.data)));
 }
 
-async function gh(path, opts = {}) {
+async function gh(path, opts = {}, tries = 4) {
   const res = await fetch("https://api.github.com/repos/" + REPO + "/contents/" + path, {
     ...opts,
     headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" },
   });
-  if (!res.ok) throw Object.assign(new Error(res.status + " " + (await res.text())), { status: res.status });
+  if (!res.ok) {
+    const text = await res.text();
+    // "is at X but expected Y": the branch moved while GitHub was committing (often our own commit a moment ago).
+    // The file itself didn't conflict, so waiting a little and sending the same request again works.
+    if (res.status === 409 && /but expected/.test(text) && tries > 1) {
+      await new Promise(r => setTimeout(r, 1500 * (5 - tries)));
+      return gh(path, opts, tries - 1);
+    }
+    throw Object.assign(new Error(res.status + " " + text), { status: res.status });
+  }
   return res.json();
 }
 

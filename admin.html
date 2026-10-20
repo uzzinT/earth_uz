@@ -636,7 +636,7 @@ $("toggleAll").onclick = () => {
   $("toggleAll").textContent = open ? "모두 접기" : "모두 펼치기";
 };
 $("saveBtn").onclick = save;
-$("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };
+$("logoutBtn").onclick = () => { store("gh_token", null); location.href = "./"; }; // back to the public page
 addEventListener("beforeunload", e => { if ($("msg").textContent.includes("저장 안 된")) e.preventDefault(); });
 
 if (load("gh_token")) openEditor(load("gh_token"));

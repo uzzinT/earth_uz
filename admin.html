@@ -51,6 +51,21 @@
   .preview { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); }
   .hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
   .tools { justify-content: space-between; margin-top: 12px; }
+  .apphead { justify-content: space-between; margin: 24px 0 10px; }
+  .apphead h2 { margin: 0; }
+  .apphead select { width: auto; padding: 8px 10px; }
+  /* Each app is a collapsible row: closed shows a mini preview, open shows the full editor. */
+  details.panel { padding: 10px 14px; }
+  details.panel[open] { padding-bottom: 18px; }
+  details.panel > summary { list-style: none; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  .mini { width: 64px; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; border-radius: 6px; background: var(--bg); flex: none; }
+  .sum-title { font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sum-subj { color: var(--muted); font-size: 14px; white-space: nowrap; }
+  .chev { color: var(--accent); font-size: 14px; white-space: nowrap; }
+  details[open] .chev::after { content: " 접기"; }
+  details:not([open]) .chev::after { content: " 편집"; }
+  details[open] > summary { margin-bottom: 12px; }
   .savebar {
     position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px;
     background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(6px);
@@ -92,7 +107,14 @@
       <div id="subjList"></div>
       <button id="addSubjBtn" style="margin-top:8px">➕ 과목 추가</button>
     </section>
-    <h2>🔗 앱</h2>
+    <div class="row apphead">
+      <h2>🔗 앱</h2>
+      <div class="row">
+        <select id="filter" aria-label="과목별로 보기"></select>
+        <button id="toggleAll">모두 펼치기</button>
+        <button class="primary" id="addTopBtn">➕ 새 링크 추가</button>
+      </div>
+    </div>
     <div id="list"></div>
     <div class="row">
       <button id="addBtn">➕ 새 링크 추가</button>
@@ -118,7 +140,13 @@
 </dialog>
 
 <template id="entryTpl">
-  <section class="panel">
+  <details class="panel">
+    <summary>
+      <img class="mini" alt="">
+      <span class="sum-title"></span>
+      <span class="sum-subj"></span>
+      <span class="chev" aria-hidden="true"></span>
+    </summary>
     <div class="entry">
       <div>
         <img class="preview" alt="썸네일 미리보기">
@@ -147,7 +175,7 @@
       </div>
       <button class="danger del">🗑️ 삭제</button>
     </div>
-  </section>
+  </details>
 </template>
 
 <script src="gallery.js?v=20261020"></script>
@@ -258,22 +286,55 @@ async function setup() {
   }
 }
 
+const openApps = new WeakSet(); // which app editors are expanded, kept across re-renders
+const subjectName = id => subjects.find(s => s.id === id)?.name || "기타";
+
+function renderFilter() {
+  const f = $("filter"), keep = f.options.length ? f.value : "*"; // first render: show everything
+  f.replaceChildren(new Option("전체 과목", "*"), ...[{ id: "", name: "기타" }, ...subjects].map(s => new Option(s.name || "이름 없음", s.id)));
+  f.value = [...f.options].some(o => o.value === keep) ? keep : "*";
+}
+
+function addApp() {
+  const subject = $("filter").value === "*" ? "" : $("filter").value; // new link starts in the subject being viewed
+  const app = { title: "", desc: "", url: "", thumb: "", subject };
+  apps.unshift(app);
+  openApps.add(app);
+  render();
+  dirty();
+  const first = $("list").firstElementChild;
+  first.scrollIntoView({ behavior: "smooth", block: "center" });
+  first.querySelector("[data-k=title]").focus({ preventScroll: true });
+}
+
 function render() {
   renderSubjects();
+  renderFilter();
+  const filter = $("filter").value;
   $("list").replaceChildren(...apps.map((app, i) => {
     const el = $("entryTpl").content.firstElementChild.cloneNode(true);
+    el.open = openApps.has(app);
+    el.hidden = filter !== "*" && (subjects.some(s => s.id === app.subject) ? app.subject : "") !== filter;
+    el.addEventListener("toggle", () => { el.open ? openApps.add(app) : openApps.delete(app); });
+    const sumTitle = el.querySelector(".sum-title"), sumSubj = el.querySelector(".sum-subj");
+    const showSummary = () => { sumTitle.textContent = app.title || "새 링크 (제목 없음)"; sumSubj.textContent = subjectName(app.subject); };
+    showSummary();
     el.querySelector("select").append(...[{ id: "", name: "기타 (분류 없음)" }, ...subjects]
       .map(s => new Option(s.name || "이름 없음", s.id)));
     const img = el.querySelector(".preview");
     const showThumb = () => {
-      img.src = localPreviews.get(app.thumb) || thumbSrc(app);
+      const src = localPreviews.get(app.thumb) || thumbSrc(app);
+      for (const im of [img, el.querySelector(".mini")]) {
+        im.style.visibility = src ? "" : "hidden"; // no address yet: avoid a broken-image icon
+        if (src) im.src = src;
+      }
       el.querySelector(".clearThumb").hidden = !app.thumb;
     };
     showThumb();
 
     el.querySelectorAll("[data-k]").forEach(input => {
       input.value = app[input.dataset.k] || "";
-      input.addEventListener("input", () => { app[input.dataset.k] = input.value; say("저장 안 된 변경이 있어요."); });
+      input.addEventListener("input", () => { app[input.dataset.k] = input.value; showSummary(); say("저장 안 된 변경이 있어요."); });
       if (input.dataset.k === "url") input.addEventListener("change", showThumb);
     });
 
@@ -362,9 +423,17 @@ async function uploadImage(file, obj, key, done) {
 
 async function save() {
   if (subjects.some(s => !s.name.trim())) return alert("이름이 비어 있는 과목이 있어요.");
+  // Open and show the first bad entry, since it may be collapsed or filtered out.
+  const reveal = (a, msg) => {
+    openApps.add(a);
+    $("filter").value = "*";
+    render();
+    $("list").children[apps.indexOf(a)].scrollIntoView({ block: "center" });
+    alert(msg);
+  };
   for (const a of apps) {
-    if (!a.title?.trim()) return alert("제목이 비어 있는 항목이 있어요.");
-    if (!/^https?:\/\/\S+$/.test(a.url?.trim() || "")) return alert("'" + a.title + "'의 링크 주소는 https:// 로 시작해야 해요.");
+    if (!a.title?.trim()) return reveal(a, "제목이 비어 있는 링크가 있어요.");
+    if (!/^https?:\/\/\S+$/.test(a.url?.trim() || "")) return reveal(a, "'" + a.title + "'의 링크 주소는 https:// 로 시작해야 해요.");
   }
   say("저장하는 중...");
   $("saveBtn").disabled = true;
@@ -419,7 +488,14 @@ $("pickFile").addEventListener("change", e => {
   uploadImage(e.target.files[0], s, "image", render);
   e.target.value = "";
 });
-$("addBtn").onclick = () => { apps.push({ title: "", desc: "", url: "", thumb: "", subject: "" }); render(); window.scrollTo(0, document.body.scrollHeight); };
+$("addBtn").onclick = $("addTopBtn").onclick = addApp;
+$("filter").onchange = render;
+$("toggleAll").onclick = () => {
+  const visible = [...$("list").children].filter(d => !d.hidden);
+  const open = visible.some(d => !d.open); // open all unless everything shown is already open
+  visible.forEach(d => d.open = open);
+  $("toggleAll").textContent = open ? "모두 접기" : "모두 펼치기";
+};
 $("saveBtn").onclick = save;
 $("logoutBtn").onclick = () => { store("gh_token", null); location.reload(); };
 addEventListener("beforeunload", e => { if ($("msg").textContent.includes("저장 안 된")) e.preventDefault(); });

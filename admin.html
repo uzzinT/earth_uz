@@ -71,6 +71,20 @@
   details[open] .chev::after { content: " 접기"; }
   details:not([open]) .chev::after { content: " 편집"; }
   details[open] > summary { margin-bottom: 12px; }
+  /* ≡ drag handle; the row moves only when grabbed here. */
+  .handle { cursor: grab; touch-action: none; user-select: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 4px 6px; flex: none; }
+  .handle:hover { color: var(--accent); }
+  .sortable-ghost { opacity: .35; }
+  .sortable-chosen .handle { cursor: grabbing; }
+  .group { margin-bottom: 18px; }
+  .group-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+  .group-head h3 { margin: 0; font-size: 18px; }
+  .group-head .n { color: var(--muted); font-size: 14px; }
+  .group-head button { margin-left: auto; padding: 6px 12px; font-size: 14px; }
+  .items { min-height: 44px; border-radius: 12px; }
+  .items:empty { border: 1px dashed var(--line); }
+  .items:empty::before { content: "링크 없음 · ≡를 잡고 여기로 끌어오면 이 과목으로 옮겨져요"; display: block; padding: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+  .subj { grid-template-columns: auto 96px 1fr auto; }
   .savebar {
     position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px;
     background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(6px);
@@ -148,6 +162,7 @@
 <template id="entryTpl">
   <details class="panel">
     <summary>
+      <span class="handle" title="끌어서 순서 바꾸기" aria-hidden="true">≡</span>
       <img class="mini" alt="">
       <span class="sum-title"></span>
       <span class="sum-subj"></span>
@@ -185,6 +200,7 @@
   </details>
 </template>
 
+<script src="vendor/Sortable.min.js?v=1.15.2"></script>
 <script src="gallery.js?v=20261020"></script>
 <script src="common.js?v=20261019"></script>
 <script>
@@ -302,67 +318,121 @@ function renderFilter() {
   f.value = [...f.options].some(o => o.value === keep) ? keep : "*";
 }
 
-function addApp() {
-  const subject = $("filter").value === "*" ? "" : $("filter").value; // new link starts in the subject being viewed
+const entryEls = new Map(); // app → its editor element, for scrolling to it
+// Apps whose subject no longer exists are shown (and saved) under 기타.
+const groupOf = app => subjects.some(s => s.id === app.subject) ? app.subject : "";
+
+function addApp(subject) {
+  if (typeof subject !== "string") subject = $("filter").value === "*" ? "" : $("filter").value; // new link starts in the subject being viewed
   const app = { title: "", desc: "", url: "", thumb: "", subject };
-  apps.unshift(app);
+  apps.unshift(app); // first in the global order = top of its subject group
   openApps.add(app);
   render();
   dirty();
-  const first = $("list").firstElementChild;
-  first.scrollIntoView({ behavior: "smooth", block: "center" });
-  first.querySelector("[data-k=title]").focus({ preventScroll: true });
+  const el = entryEls.get(app);
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.querySelector("[data-k=title]").focus({ preventScroll: true });
+}
+
+// After a drag, read the new order (and any subject change) back from the DOM.
+function syncFromDom() {
+  const byEl = new Map([...entryEls].map(([app, el]) => [el, app]));
+  const order = [];
+  document.querySelectorAll("#list .items").forEach(box => {
+    for (const el of box.children) {
+      const app = byEl.get(el);
+      app.subject = box.dataset.subject;
+      order.push(app);
+    }
+  });
+  apps = order;
+  render();
+  dirty();
+}
+
+// ⬆️⬇️ move an app past its neighbour in the same subject.
+function moveApp(app, d) {
+  const same = apps.filter(a => groupOf(a) === groupOf(app));
+  const other = same[same.indexOf(app) + d];
+  if (!other) return;
+  const i = apps.indexOf(app), j = apps.indexOf(other);
+  [apps[i], apps[j]] = [apps[j], apps[i]];
+  render();
+  dirty();
 }
 
 function render() {
   renderSubjects();
   renderFilter();
   const filter = $("filter").value;
-  $("list").replaceChildren(...apps.map((app, i) => {
-    const el = $("entryTpl").content.firstElementChild.cloneNode(true);
-    el.open = openApps.has(app);
-    el.hidden = filter !== "*" && (subjects.some(s => s.id === app.subject) ? app.subject : "") !== filter;
-    el.addEventListener("toggle", () => { el.open ? openApps.add(app) : openApps.delete(app); });
-    const sumTitle = el.querySelector(".sum-title"), sumSubj = el.querySelector(".sum-subj");
-    const showSummary = () => { sumTitle.textContent = app.title || "새 링크 (제목 없음)"; sumSubj.textContent = subjectName(app.subject); };
-    showSummary();
-    el.querySelector("select").append(...[{ id: "", name: "기타 (분류 없음)" }, ...subjects]
-      .map(s => new Option(s.name || "이름 없음", s.id)));
-    const img = el.querySelector(".preview");
-    const showThumb = () => {
-      const src = localPreviews.get(app.thumb) || thumbSrc(app);
-      for (const im of [img, el.querySelector(".mini")]) {
-        im.style.visibility = src ? "" : "hidden"; // no address yet: avoid a broken-image icon
-        if (src) im.src = src;
-      }
-      el.querySelector(".clearThumb").hidden = !app.thumb;
-    };
-    showThumb();
-
-    el.querySelectorAll("[data-k]").forEach(input => {
-      input.value = app[input.dataset.k] || "";
-      input.addEventListener("input", () => { app[input.dataset.k] = input.value; showSummary(); say("저장 안 된 변경이 있어요."); });
-      if (input.dataset.k === "url") input.addEventListener("change", showThumb);
-    });
-
-    el.querySelector("input[type=file]").addEventListener("change", e => uploadImage(e.target.files[0], app, "thumb", showThumb));
-    // Ctrl+V anywhere in this link's editor uploads a copied image as its thumbnail.
-    el.addEventListener("paste", e => { const f = pastedImage(e); if (f) { e.preventDefault(); uploadImage(f, app, "thumb", showThumb); } });
-    const zone = el.querySelector(".paste");
-    zone.onclick = async () => {
-      zone.focus(); // Ctrl+V works once focused; also try reading the clipboard directly
-      const f = await readClipboardImage();
-      if (f) uploadImage(f, app, "thumb", showThumb);
-    };
-    el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
-    el.querySelector(".up").onclick = () => move(apps, i, -1);
-    el.querySelector(".down").onclick = () => move(apps, i, 1);
-    el.querySelector(".del").onclick = () => {
-      if (!confirm("'" + (app.title || "제목 없음") + "'을(를) 삭제할까요?")) return;
-      apps.splice(i, 1); render(); say("저장 안 된 변경이 있어요.");
-    };
-    return el;
+  entryEls.clear();
+  const groups = [...subjects.map(s => ({ id: s.id, name: s.name || "이름 없음" })), { id: "", name: "기타 (분류 없음)" }];
+  $("list").replaceChildren(...groups.map(g => {
+    const mine = apps.filter(a => groupOf(a) === g.id);
+    const sec = document.createElement("section");
+    sec.className = "group";
+    sec.hidden = filter !== "*" && filter !== g.id;
+    const head = document.createElement("div");
+    head.className = "group-head";
+    head.append(Object.assign(document.createElement("h3"), { textContent: g.name }),
+      Object.assign(document.createElement("span"), { className: "n", textContent: mine.length + "개" }),
+      Object.assign(document.createElement("button"), { textContent: "➕ 이 과목에 추가", onclick: () => addApp(g.id) }));
+    const box = document.createElement("div");
+    box.className = "items";
+    box.dataset.subject = g.id;
+    box.append(...mine.map(entry));
+    new Sortable(box, { group: "apps", handle: ".handle", animation: 150, onEnd: syncFromDom });
+    sec.append(head, box);
+    return sec;
   }));
+}
+
+function entry(app) {
+  const el = $("entryTpl").content.firstElementChild.cloneNode(true);
+  entryEls.set(app, el);
+  el.open = openApps.has(app);
+  el.addEventListener("toggle", () => { el.open ? openApps.add(app) : openApps.delete(app); });
+  el.querySelector(".handle").addEventListener("click", e => e.preventDefault()); // grabbing the handle shouldn't toggle the row
+  const sumTitle = el.querySelector(".sum-title"), sumSubj = el.querySelector(".sum-subj");
+  const showSummary = () => { sumTitle.textContent = app.title || "새 링크 (제목 없음)"; sumSubj.textContent = subjectName(app.subject); };
+  showSummary();
+  el.querySelector("select").append(...[{ id: "", name: "기타 (분류 없음)" }, ...subjects]
+    .map(s => new Option(s.name || "이름 없음", s.id)));
+  el.querySelector("select").addEventListener("change", render); // move the row into its new subject group
+  const img = el.querySelector(".preview");
+  const showThumb = () => {
+    const src = localPreviews.get(app.thumb) || thumbSrc(app);
+    for (const im of [img, el.querySelector(".mini")]) {
+      im.style.visibility = src ? "" : "hidden"; // no address yet: avoid a broken-image icon
+      if (src) im.src = src;
+    }
+    el.querySelector(".clearThumb").hidden = !app.thumb;
+  };
+  showThumb();
+
+  el.querySelectorAll("[data-k]").forEach(input => {
+    input.value = (input.dataset.k === "subject" ? groupOf(app) : app[input.dataset.k]) || "";
+    input.addEventListener("input", () => { app[input.dataset.k] = input.value; showSummary(); say("저장 안 된 변경이 있어요."); });
+    if (input.dataset.k === "url") input.addEventListener("change", showThumb);
+  });
+
+  el.querySelector("input[type=file]").addEventListener("change", e => uploadImage(e.target.files[0], app, "thumb", showThumb));
+  // Ctrl+V anywhere in this link's editor uploads a copied image as its thumbnail.
+  el.addEventListener("paste", e => { const f = pastedImage(e); if (f) { e.preventDefault(); uploadImage(f, app, "thumb", showThumb); } });
+  const zone = el.querySelector(".paste");
+  zone.onclick = async () => {
+    zone.focus(); // Ctrl+V works once focused; also try reading the clipboard directly
+    const f = await readClipboardImage();
+    if (f) uploadImage(f, app, "thumb", showThumb);
+  };
+  el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
+  el.querySelector(".up").onclick = () => moveApp(app, -1);
+  el.querySelector(".down").onclick = () => moveApp(app, 1);
+  el.querySelector(".del").onclick = () => {
+    if (!confirm("'" + (app.title || "제목 없음") + "'을(를) 삭제할까요?")) return;
+    apps.splice(apps.indexOf(app), 1); render(); say("저장 안 된 변경이 있어요.");
+  };
+  return el;
 }
 
 function move(arr, i, d) {
@@ -379,6 +449,7 @@ function renderSubjects() {
   $("subjList").replaceChildren(...subjects.map((s, i) => {
     const row = document.createElement("div");
     row.className = "subj";
+    row.append(Object.assign(document.createElement("span"), { className: "handle", title: "끌어서 순서 바꾸기", textContent: "≡" }));
     const pick = Object.assign(document.createElement("button"), { className: "pick", title: "사진 바꾸기", onclick: () => openPicker(s) });
     pick.append(Object.assign(document.createElement("img"), { src: localPreviews.get(s.image) || subjectImage(s, i), alt: "" }),
       Object.assign(document.createElement("span"), { textContent: "사진 바꾸기" }));
@@ -403,7 +474,12 @@ function renderSubjects() {
     row.append(pick, name, tools);
     return row;
   }));
+  subjectSortable ||= new Sortable($("subjList"), {
+    handle: ".handle", animation: 150,
+    onEnd: e => { subjects.splice(e.newIndex, 0, ...subjects.splice(e.oldIndex, 1)); render(); dirty(); },
+  });
 }
+let subjectSortable = null;
 
 let picking = null; // subject whose photo the picker is choosing
 function openPicker(s) {
@@ -475,7 +551,7 @@ async function save() {
     openApps.add(a);
     $("filter").value = "*";
     render();
-    $("list").children[apps.indexOf(a)].scrollIntoView({ block: "center" });
+    entryEls.get(a).scrollIntoView({ block: "center" });
     alert(msg);
   };
   for (const a of apps) {
@@ -542,10 +618,10 @@ $("pickFile").addEventListener("change", e => {
   uploadImage(e.target.files[0], s, "image", render);
   e.target.value = "";
 });
-$("addBtn").onclick = $("addTopBtn").onclick = addApp;
+$("addBtn").onclick = $("addTopBtn").onclick = () => addApp();
 $("filter").onchange = render;
 $("toggleAll").onclick = () => {
-  const visible = [...$("list").children].filter(d => !d.hidden);
+  const visible = [...document.querySelectorAll("#list .group:not([hidden]) details")];
   const open = visible.some(d => !d.open); // open all unless everything shown is already open
   visible.forEach(d => d.open = open);
   $("toggleAll").textContent = open ? "모두 접기" : "모두 펼치기";

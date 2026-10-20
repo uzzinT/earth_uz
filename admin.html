@@ -32,6 +32,11 @@
   .gal span { display: block; font-size: 12px; padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gal h3 { grid-column: 1 / -1; margin: 8px 0 0; font-size: 16px; }
   .upload { cursor: pointer; }
+  .paste {
+    margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px;
+    font-size: 13px; color: var(--muted); text-align: center; cursor: pointer;
+  }
+  .paste:focus { outline: none; border-color: var(--accent); color: var(--ink); }
   input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px;
     background: var(--bg); color: var(--ink); font: inherit;
@@ -135,6 +140,7 @@
   <div class="gal" id="gal"></div>
   <div class="row" style="justify-content:space-between">
     <label class="upload"><span>📤 내 사진 올리기</span> <input type="file" accept="image/*" id="pickFile"></label>
+    <span class="hint">또는 이 창에서 Ctrl+V로 복사한 사진 붙여넣기</span>
     <button id="pickClose">닫기</button>
   </div>
 </dialog>
@@ -154,6 +160,7 @@
           <span>🖼️ 썸네일 올리기</span>
           <input type="file" accept="image/*">
         </label>
+        <div class="paste" tabindex="0" role="button" aria-label="클립보드 사진 붙여넣기">📋 여기를 누르고 Ctrl+V<br>(복사한 사진 붙여넣기)</div>
         <p class="hint">안 올리면 사이트 첫 화면이 자동으로 들어가요.</p>
         <button class="clearThumb" hidden>썸네일 지우기</button>
       </div>
@@ -339,6 +346,14 @@ function render() {
     });
 
     el.querySelector("input[type=file]").addEventListener("change", e => uploadImage(e.target.files[0], app, "thumb", showThumb));
+    // Ctrl+V anywhere in this link's editor uploads a copied image as its thumbnail.
+    el.addEventListener("paste", e => { const f = pastedImage(e); if (f) { e.preventDefault(); uploadImage(f, app, "thumb", showThumb); } });
+    const zone = el.querySelector(".paste");
+    zone.onclick = async () => {
+      zone.focus(); // Ctrl+V works once focused; also try reading the clipboard directly
+      const f = await readClipboardImage();
+      if (f) uploadImage(f, app, "thumb", showThumb);
+    };
     el.querySelector(".clearThumb").onclick = () => { app.thumb = ""; showThumb(); say("저장 안 된 변경이 있어요."); };
     el.querySelector(".up").onclick = () => move(apps, i, -1);
     el.querySelector(".down").onclick = () => move(apps, i, 1);
@@ -402,13 +417,45 @@ function openPicker(s) {
   $("picker").showModal();
 }
 
-// Uploads an image to thumbs/ and stores its path in obj[key].
+const pastedImage = e => [...(e.clipboardData?.items || [])].find(i => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile() || null;
+
+// Click path: read an image straight from the clipboard (Chrome/Edge ask permission once).
+async function readClipboardImage() {
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      const type = item.types.find(t => t.startsWith("image/"));
+      if (type) return await item.getType(type);
+    }
+    say("클립보드에 사진이 없어요. 사진을 복사한 뒤 Ctrl+V를 눌러 주세요.");
+  } catch {
+    say("이 칸을 누른 상태에서 Ctrl+V를 눌러 주세요.");
+  }
+  return null;
+}
+
+// Screenshots are often large PNGs: shrink to at most 1200px wide JPEG before committing.
+async function shrink(blob) {
+  try {
+    const bmp = await createImageBitmap(blob);
+    const w = Math.min(1200, bmp.width), h = Math.round(bmp.height * w / bmp.width);
+    const c = Object.assign(document.createElement("canvas"), { width: w, height: h });
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); // transparent PNGs get a white background
+    g.drawImage(bmp, 0, 0, w, h);
+    return await new Promise(r => c.toBlob(r, "image/jpeg", 0.85)) || blob;
+  } catch {
+    return blob;
+  }
+}
+
+// Uploads an image (file or pasted blob) to thumbs/ and stores its path in obj[key].
 async function uploadImage(file, obj, key, done) {
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) return alert("5MB보다 작은 이미지를 골라 주세요.");
   say("사진 올리는 중...");
+  file = await shrink(file);
+  if (file.size > 5 * 1024 * 1024) return alert("5MB보다 작은 이미지를 골라 주세요.");
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(",")[1]); fr.readAsDataURL(file); });
-  const ext = (file.name.match(/\.\w+$/) || [".png"])[0].toLowerCase();
+  const ext = file.type === "image/jpeg" ? ".jpg" : "." + (file.type.split("/")[1] || "png");
   const path = "thumbs/" + Date.now() + ext;
   try {
     await gh(path, { method: "PUT", body: JSON.stringify({ message: "Add thumbnail", content: b64 }) });
@@ -482,6 +529,13 @@ $("addSubjBtn").onclick = () => {
   dirty();
 };
 $("pickClose").onclick = () => $("picker").close();
+$("picker").addEventListener("paste", e => {
+  const f = pastedImage(e), s = picking;
+  if (!f) return;
+  e.preventDefault();
+  $("picker").close();
+  uploadImage(f, s, "image", render);
+});
 $("pickFile").addEventListener("change", e => {
   const s = picking;
   $("picker").close();

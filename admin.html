@@ -31,6 +31,8 @@
   .gal img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
   .gal span { display: block; font-size: 12px; padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gal h3 { grid-column: 1 / -1; margin: 8px 0 0; font-size: 16px; }
+  .gal .note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+  .suggestBtn { margin-top: 8px; width: 100%; }
   .upload { cursor: pointer; }
   .paste {
     margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px;
@@ -149,6 +151,12 @@
   </div>
 </div>
 
+<dialog id="suggest">
+  <b id="suggestTitle">추천 썸네일</b>
+  <div class="gal" id="suggestGal"></div>
+  <div class="row" style="justify-content:flex-end"><button id="suggestClose">닫기</button></div>
+</dialog>
+
 <dialog id="picker">
   <b>과목 사진 고르기</b>
   <div class="gal" id="gal"></div>
@@ -176,6 +184,7 @@
           <input type="file" accept="image/*">
         </label>
         <div class="paste" tabindex="0" role="button" aria-label="클립보드 사진 붙여넣기">📋 여기를 누르고 Ctrl+V<br>(복사한 사진 붙여넣기)</div>
+        <button class="suggestBtn" type="button">✨ 추천 썸네일</button>
         <p class="hint">안 올리면 사이트 첫 화면이 자동으로 들어가요.</p>
         <button class="clearThumb" hidden>썸네일 지우기</button>
       </div>
@@ -203,6 +212,7 @@
 <script src="vendor/Sortable.min.js?v=1.15.2"></script>
 <script src="gallery.js?v=20261020"></script>
 <script src="common.js?v=20261023"></script>
+<script src="suggest.js?v=20261023"></script>
 <script>
 const REPO = "uzzinT/earth_uz";
 const $ = id => document.getElementById(id);
@@ -429,6 +439,7 @@ function entry(app) {
   el.querySelector("input[type=file]").addEventListener("change", e => uploadImage(e.target.files[0], app, "thumb", showThumb));
   // Ctrl+V anywhere in this link's editor uploads a copied image as its thumbnail.
   el.addEventListener("paste", e => { const f = pastedImage(e); if (f) { e.preventDefault(); uploadImage(f, app, "thumb", showThumb); } });
+  el.querySelector(".suggestBtn").onclick = () => openSuggest(app, showThumb);
   const zone = el.querySelector(".paste");
   zone.onclick = async () => {
     zone.focus(); // Ctrl+V works once focused; also try reading the clipboard directly
@@ -615,6 +626,7 @@ $("addSubjBtn").onclick = () => {
   dirty();
 };
 $("pickClose").onclick = () => $("picker").close();
+$("suggestClose").onclick = () => $("suggest").close();
 $("picker").addEventListener("paste", e => {
   const f = pastedImage(e), s = picking;
   if (!f) return;

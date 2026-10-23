@@ -59,7 +59,77 @@ async function imagesInApp(url) {
   return abs.filter((_, i) => ok[i]).slice(0, 8);
 }
 
+// ---- Free-license photo search (Wikimedia Commons + NASA; both allow browser requests, no key) ----
+const textOf = html => new DOMParser().parseFromString(html || "", "text/html").body.textContent.trim();
+const FREE = /^(cc0|public domain|pd\b|cc[ -]by(-sa)?[ -]?[\d.]*)/i;
+
+async function searchCommons(q) {
+  const api = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=24"
+    + "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=640&gsrsearch=" + encodeURIComponent(q + " filetype:bitmap");
+  const pages = Object.values((await (await fetch(api)).json()).query?.pages || {}).sort((a, b) => a.index - b.index);
+  return pages.map(p => {
+    const ii = p.imageinfo?.[0], m = ii?.extmetadata || {};
+    const license = (m.LicenseShortName?.value || "").trim();
+    if (!ii?.thumburl || !FREE.test(license) || /\b(nc|nd)\b/i.test(license)) return null; // no non-commercial / no-derivatives
+    return {
+      thumb: ii.thumburl, full: ii.thumburl, copy: true,
+      name: p.title.replace(/^File:/, "").replace(/\.\w+$/, ""),
+      artist: textOf(m.Artist?.value).slice(0, 80) || "작가 미상", license, page: ii.descriptionurl,
+    };
+  }).filter(Boolean);
+}
+
+async function searchNasa(q) {
+  const res = await (await fetch("https://images-api.nasa.gov/search?media_type=image&q=" + encodeURIComponent(q))).json();
+  return (res.collection?.items || []).slice(0, 24).filter(it => it.links?.[0]?.href).map(it => {
+    const d = it.data[0];
+    return {
+      // NASA's image server doesn't allow copying from the browser, so picks are linked (public domain, stable URLs).
+      thumb: it.links[0].href, full: `https://images-assets.nasa.gov/image/${d.nasa_id}/${d.nasa_id}~medium.jpg`, copy: false,
+      name: d.title.slice(0, 60), artist: "NASA" + (d.center ? " " + d.center : ""), license: "Public domain",
+      page: "https://images.nasa.gov/details/" + encodeURIComponent(d.nasa_id),
+    };
+  });
+}
+
+async function runSearch(app, close, done) {
+  const q = $("searchQ").value.trim();
+  const box = $("searchGal");
+  if (!q) return;
+  box.replaceChildren(Object.assign(document.createElement("p"), { className: "note", textContent: "찾는 중..." }));
+  const [commons, nasa] = await Promise.all([searchCommons(q).catch(() => []), searchNasa(q).catch(() => [])]);
+  const pick = async r => {
+    close();
+    const credit = { name: r.name, artist: r.artist, license: r.license, page: r.page };
+    if (r.copy) {
+      // Keep our own copy so the site doesn't depend on Wikimedia; fall back to linking if the copy fails.
+      try {
+        const blob = await (await fetch(r.full)).blob();
+        await uploadImage(blob, app, "thumb", done);
+        if (app.thumb?.startsWith("thumbs/")) { app.thumbCredit = { ...credit, src: app.thumb }; return; }
+      } catch {}
+    }
+    app.thumb = r.full;
+    app.thumbCredit = { ...credit, src: r.full };
+    done();
+    dirty();
+    say("썸네일을 바꿨어요. '저장하기'를 눌러야 반영돼요.");
+  };
+  const group = (title, list) => [
+    Object.assign(document.createElement("h3"), { textContent: `${title} · ${list.length}장` }),
+    ...(list.length ? list.map(r => {
+      const b = Object.assign(document.createElement("button"), { type: "button", title: `${r.name}\n${r.artist} · ${r.license}`, onclick: () => pick(r) });
+      b.append(Object.assign(document.createElement("img"), { src: r.thumb, alt: "", loading: "lazy" }),
+        Object.assign(document.createElement("span"), { textContent: r.name }));
+      return b;
+    }) : [Object.assign(document.createElement("p"), { className: "note", textContent: "결과가 없어요. 다른 단어(영어)로 찾아보세요." })]),
+  ];
+  box.replaceChildren(...group("위키미디어 공용", commons), ...group("NASA", nasa));
+}
+
 function openSuggest(app, done) {
+  $("searchGal").replaceChildren();
+  $("searchForm").onsubmit = e => { e.preventDefault(); runSearch(app, () => $("suggest").close(), done); };
   const gal = $("suggestGal");
   const choose = thumb => { app.thumb = thumb; $("suggest").close(); done(); dirty(); say("썸네일을 바꿨어요. '저장하기'를 눌러야 반영돼요."); };
   const tile = (src, caption, thumb) => {

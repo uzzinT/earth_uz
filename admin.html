@@ -33,6 +33,11 @@
   .gal h3 { grid-column: 1 / -1; margin: 8px 0 0; font-size: 16px; }
   .gal .note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
   .suggestBtn { margin-top: 8px; width: 100%; }
+  /* Suggestion window scrolls as one page instead of nested scroll boxes. */
+  #suggest { max-height: 90vh; overflow: auto; }
+  #suggest .gal { max-height: none; overflow: visible; }
+  #searchQ { padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; }
+  #searchQ:focus { outline: none; border-color: var(--accent); }
   .upload { cursor: pointer; }
   .paste {
     margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px;
@@ -153,6 +158,12 @@
 
 <dialog id="suggest">
   <b id="suggestTitle">추천 썸네일</b>
+  <form id="searchForm" class="row" style="margin-top:12px">
+    <input type="search" id="searchQ" placeholder="사진 검색 (예: pendulum, 화산, aurora)" aria-label="사진 검색" style="flex:1">
+    <button>🔎 검색</button>
+  </form>
+  <p class="hint">위키미디어 공용과 NASA에서 자유롭게 쓸 수 있는 사진만 찾아요. 영어로 검색하면 더 많이 나와요.</p>
+  <div class="gal" id="searchGal"></div>
   <div class="gal" id="suggestGal"></div>
   <div class="row" style="justify-content:flex-end"><button id="suggestClose">닫기</button></div>
 </dialog>
@@ -212,7 +223,7 @@
 <script src="vendor/Sortable.min.js?v=1.15.2"></script>
 <script src="gallery.js?v=20261020"></script>
 <script src="common.js?v=20261023"></script>
-<script src="suggest.js?v=20261023"></script>
+<script src="suggest.js?v=20261023b"></script>
 <script>
 const REPO = "uzzinT/earth_uz";
 const $ = id => document.getElementById(id);

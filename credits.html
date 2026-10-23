@@ -28,16 +28,25 @@
 <script src="gallery.js?v=20261020"></script>
 <script>
 const list = document.getElementById("list");
-GALLERY.forEach((g, i) => {
-  if (i === 0 || GALLERY[i - 1].group !== g.group) list.append(Object.assign(document.createElement("h2"), { textContent: g.group }));
-  const row = document.createElement("div");
-  row.className = "row";
+const heading = text => Object.assign(document.createElement("h2"), { textContent: text });
+function row(g) {
+  const r = document.createElement("div");
+  r.className = "row";
   const info = document.createElement("div");
-  const link = Object.assign(document.createElement("a"), { href: g.page, target: "_blank", rel: "noopener", textContent: g.name });
+  const link = Object.assign(document.createElement("a"), { href: /^https:\/\//.test(g.page) ? g.page : "#", target: "_blank", rel: "noopener", textContent: g.name });
   info.append(link, Object.assign(document.createElement("small"), { textContent: (g.artist || "작가 미상") + " · " + g.license }));
-  row.append(Object.assign(document.createElement("img"), { src: g.src, alt: "", loading: "lazy" }), info);
-  list.append(row);
+  r.append(Object.assign(document.createElement("img"), { src: g.src, alt: "", loading: "lazy" }), info);
+  return r;
+}
+GALLERY.forEach((g, i) => {
+  if (i === 0 || GALLERY[i - 1].group !== g.group) list.append(heading(g.group));
+  list.append(row(g));
 });
+// Thumbnails picked through the admin page's photo search carry their own credit.
+fetch("links.json", { cache: "no-cache" }).then(r => r.json()).then(d => {
+  const picked = (d.apps || []).filter(a => a.thumbCredit && a.thumbCredit.src === a.thumb);
+  if (picked.length) list.prepend(heading("링크 썸네일"), ...picked.map(a => row(a.thumbCredit)));
+}).catch(() => {});
 </script>
 </body>
 </html>

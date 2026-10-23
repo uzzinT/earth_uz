@@ -202,7 +202,7 @@
 
 <script src="vendor/Sortable.min.js?v=1.15.2"></script>
 <script src="gallery.js?v=20261020"></script>
-<script src="common.js?v=20261019"></script>
+<script src="common.js?v=20261023"></script>
 <script>
 const REPO = "uzzinT/earth_uz";
 const $ = id => document.getElementById(id);
@@ -410,10 +410,11 @@ function entry(app) {
   el.querySelector("select").addEventListener("change", render); // move the row into its new subject group
   const img = el.querySelector(".preview");
   const showThumb = () => {
-    const src = localPreviews.get(app.thumb) || thumbSrc(app);
     for (const im of [img, el.querySelector(".mini")]) {
-      im.style.visibility = src ? "" : "hidden"; // no address yet: avoid a broken-image icon
-      if (src) im.src = src;
+      im.style.visibility = "";
+      const local = localPreviews.get(app.thumb);
+      if (local) { im.onerror = null; im.src = local; }
+      else setThumb(im, app, () => im.style.visibility = "hidden"); // nothing loads: avoid a broken-image icon
     }
     el.querySelector(".clearThumb").hidden = !app.thumb;
   };

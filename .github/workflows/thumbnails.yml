@@ -1,0 +1,51 @@
+name: Link thumbnails
+
+# Screenshots links that have no uploaded thumbnail, so the site doesn't rely on an outside service.
+on:
+  push:
+    branches: [main]
+    paths: [links.json]
+  schedule:
+    - cron: "0 18 * * 0" # weekly (Monday 03:00 KST): refresh screenshots of changed apps
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: "Re-take every screenshot (not only missing ones)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: thumbnails
+  cancel-in-progress: false
+
+jobs:
+  shoot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright@1.48.2
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/screenshots.mjs
+        env:
+          REFRESH: ${{ (github.event_name == 'schedule' || inputs.refresh) && '1' || '0' }}
+      - name: Commit new screenshots
+        run: |
+          git add thumbs/auto
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update link screenshots"
+          # The admin page may commit at the same time; rebase and retry.
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
+      - name: Rebuild the site
+        # Pushes made with the workflow token don't start a Pages build on their own.
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

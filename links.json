@@ -23,20 +23,6 @@
   ],
   "apps": [
     {
-      "title": "개념 테스트 게임",
-      "desc": "",
-      "url": "https://uzzint.github.io/atom-crossroads/",
-      "thumb": "thumbs/1793185834797.jpg",
-      "subject": "sci",
-      "thumbCredit": {
-        "name": "Ion de litio",
-        "artist": "LG UltraLink",
-        "license": "CC BY-SA 4.0",
-        "page": "https://commons.wikimedia.org/wiki/File:Ion_de_litio.gif",
-        "src": "thumbs/1793185834797.jpg"
-      }
-    },
-    {
       "title": "빅데이터-데이터 구조대",
       "desc": "빅데이터를 활용해 동료들을 구하자!",
       "url": "https://uzzint.github.io/data-rescue/",
@@ -56,6 +42,20 @@
       "url": "https://uzzint.github.io/science-debate/",
       "thumb": "thumbs/1793078991799.jpg",
       "subject": "sci"
+    },
+    {
+      "title": "개념 테스트 게임",
+      "desc": "",
+      "url": "https://uzzint.github.io/atom-crossroads/",
+      "thumb": "thumbs/1793186052715.jpg",
+      "subject": "sci",
+      "thumbCredit": {
+        "name": "Rutherford-atom-for-carbon lg",
+        "artist": "Ernest Rutherford",
+        "license": "Public domain",
+        "page": "https://commons.wikimedia.org/wiki/File:Rutherford-atom-for-carbon_lg.jpg",
+        "src": "thumbs/1793186052715.jpg"
+      }
     },
     {
       "title": "중력실험실",
